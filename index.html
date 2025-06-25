@@ -64,18 +64,35 @@
 
         // 开始文字输入
         const startTextInput = (x, y, editId = null) => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+
+          const ctx = canvas.getContext("2d");
+          ctx.font = "16px Arial";
+
+          let text = "";
+          let width = 200;
+          let height = 24;
+
+          if (editId) {
+            const annotation = annotations.find((a) => a.id === editId);
+            if (annotation) {
+              text = annotation.text;
+              // 计算多行文本的尺寸
+              const lines = text.split("\n");
+              height = Math.max(24, lines.length * 20);
+              width =  Math.max(...lines.map((line) => ctx.measureText(line).width)) + 10;
+            }
+          }
           setTextInput({
             show: true,
             x,
             y,
-            width: 200,
-            height: 24,
-            text: editId
-              ? annotations.find((a) => a.id === editId)?.text || ""
-              : "",
+            width,
+            height,
+            text,
             editId,
           });
-          setCurrentTool(null);
         }; // 完成文字输入
         const finishTextInput = () => {
           const text = textInput.text.trim();
@@ -274,12 +291,21 @@
             };
           } else if (ann.type === "text") {
             ctx.font = "16px Arial";
-            const textMetrics = ctx.measureText(ann.text);
+            const lines = ann.text.split("\n");
+            const lineHeight = 20; // 行高
+            const totalHeight = lines.length * lineHeight;
+
+            // 计算最长行的宽度
+            let maxWidth = 0;
+            lines.forEach((line) => {
+              const metrics = ctx.measureText(line);
+              maxWidth = Math.max(maxWidth, metrics.width);
+            });
             return {
               x: ann.x,
-              y: ann.y - 16, // 文字基线向上16px
-              width: textMetrics.width,
-              height: 16, // 固定高度
+              y: ann.y - lineHeight,
+              width: maxWidth,
+              height: totalHeight,
             };
           }
           return { x: 0, y: 0, width: 0, height: 0 };
@@ -353,18 +379,6 @@
             canvas.dataset.offsetY = offsetY;
           }
 
-          // 绘制文字输入框
-          if (textInput.show) {
-            ctx.strokeStyle = "#1890ff";
-            ctx.lineWidth = 1;
-            ctx.strokeRect(
-              textInput.x,
-              textInput.y,
-              textInput.width,
-              textInput.height
-            );
-          }
-
           // 绘制自由绘制路径
           if (
             isDrawing &&
@@ -380,6 +394,8 @@
             }
             ctx.stroke();
           }
+          console.log('draw canvas');
+          
           // 绘制已有标注
           annotations.forEach((ann) => {
             ctx.strokeStyle = ann.color;
@@ -401,10 +417,18 @@
                 ann.color
               );
             } else if (ann.type === "text") {
-              if (textInput.show && textInput.editId === ann.id) return;
+              if (textInput.show && textInput.editId === ann.id) {
+                return;
+              }
               ctx.fillStyle = ann.color;
               ctx.font = "16px Arial";
-              ctx.fillText(ann.text, ann.x, ann.y);
+              // 处理多行文字渲染
+              const lines = ann.text.split("\n");
+              let yPos = ann.y;
+              lines.forEach((line) => {
+                ctx.fillText(line, ann.x, yPos);
+                yPos += 20; // 行间距
+              });
             } else if (ann.type === "freehand" && ann.points.length > 1) {
               ctx.strokeStyle = ann.color;
               ctx.lineWidth = 2;
@@ -416,8 +440,12 @@
               ctx.stroke();
             }
 
-            // 绘制选中状态, 除自由绘制外
-            if (ann.id === selectedId && ann.type !== "freehand") {
+            // 绘制选中状态, 自由绘制和文字除外
+            if (
+              ann.id === selectedId &&
+              ann.type !== "freehand" &&
+              ann.type !== "text"
+            ) {
               const boundingBox = getBoundingBox(ann, ctx);
 
               if (ann.type === "arrow") {
@@ -532,6 +560,7 @@
 
         // 检测点击是否在标注上
         const isInAnnotation = (ann, x, y, ctx) => {
+          if (textInput.show && textInput.editId === ann.id) return false;
           if (ann.type === "rectangle") {
             // 判断点是否在矩形边框上
             const lineWidth = 2; // 匹配绘制时的线宽
@@ -600,34 +629,31 @@
           const y = e.clientY - rect.top;
           const ctx = canvas.getContext("2d");
 
+          // 检查是否双击文字进行编辑
+          if (e.detail === 2) {
+            const clickedText = annotations.find(
+              (a) => a.type === "text" && isInAnnotation(a, x, y, ctx)
+            );
+            if (clickedText) {
+              startTextInput(clickedText.x, clickedText.y, clickedText.id);
+              return;
+            }
+          }
+
           // 如果正在输入文字，点击外部完成输入
           if (textInput.show) {
-            finishTextInput();
+            if(!textInput.text) {
+              startTextInput(x, y);
+            } else {
+              finishTextInput();
+            }
             return;
           }
           // 处理文字工具
           if (currentTool === "text") {
             startTextInput(x, y);
             return;
-          } // 检查是否双击文字进行编辑
-          if (e.detail === 2) {
-            const clickedText = annotations.find(
-              (a) => a.type === "text" && isInAnnotation(a, x, y, ctx)
-            );
-            if (clickedText) {
-              const textArea = document.createElement("textarea");
-              textArea.value = clickedText.text;
-              document.body.appendChild(textArea);
-              textArea.focus();
-              const length = textArea.value.length;
-              textArea.setSelectionRange(length, length);
-              document.body.removeChild(textArea);
-
-              startTextInput(clickedText.x, clickedText.y, clickedText.id);
-              return;
-            }
           }
-
           // 右键取消选择
           if (e.button === 2) {
             setSelectedId(null);
@@ -837,7 +863,7 @@
             const len = textAreaRef.current.value.length;
             textAreaRef.current.setSelectionRange(len, len);
           }
-        }, [textInput.show]);
+        }, [textInput.show, textInput.x]);
 
         useEffect(() => {
           if (!isDragging || !isDrawing) {
@@ -853,6 +879,9 @@
         useEffect(() => {
           if (selectedId && currentTool !== "freehand") {
             setSelectedId(null);
+          }
+          if(textInput.show) {
+            finishTextInput();
           }
         }, [currentTool]);
 
