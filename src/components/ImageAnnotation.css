@@ -2,10 +2,6 @@ body {
   font-family: Arial, sans-serif;
   padding: 20px;
 }
-.container {
-  max-width: 800px;
-  margin: 0 auto;
-}
 .toolbar {
   margin-bottom: 15px;
   padding: 10px;
