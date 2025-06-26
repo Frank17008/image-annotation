@@ -2,6 +2,9 @@ body {
   font-family: Arial, sans-serif;
   padding: 20px;
 }
+canvas {
+  display: block;
+}
 .toolbar {
   margin-bottom: 15px;
   padding: 10px;

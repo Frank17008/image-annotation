@@ -294,12 +294,49 @@ const ImageAnnotation = ({ src }) => {
   // 鼠标移动事件处理
   const handleMouseMove = useCallback(
     (e) => {
-      if (!isDrawing && !isDragging) return;
+      // if (!isDrawing && !isDragging) return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
       const pos = getCanvasCoordinates(e);
-      setCurrentPos(pos);
+      // 检查鼠标移动到任意标注上
+      const isOnAnnotation = annotations.some((ann) => isInAnnotation(ann, pos.x, pos.y, canvas.getContext('2d')));
+      canvas.style.cursor = isOnAnnotation ? 'move' : 'crosshair';
 
+      // 拖动整个标注
+      if (isDragging && selectedId) {
+        const dx = pos.x - currentPos.x;
+        const dy = pos.y - currentPos.y;
+        setAnnotations((prev) =>
+          prev.map((ann) => {
+            if (ann.id === selectedId) {
+              if (ann.type === 'freehand') {
+                return {
+                  ...ann,
+                  points: ann.points.map((point) => ({
+                    x: point.x + dx,
+                    y: point.y + dy,
+                  })),
+                };
+              } else {
+                return { ...ann, x: ann.x + dx, y: ann.y + dy };
+              }
+            }
+            return ann;
+          })
+        );
+        setCurrentPos(pos);
+        drawCanvas();
+        return;
+      }
       if (isDrawing && currentTool === 'freehand') {
         setFreehandPath((prev) => [...prev, pos]);
+      }
+
+      // 绘制新标注或调整控制点
+      if (isDrawing) {
+        setCurrentPos(pos);
+        setStatus(`正在绘制 ${currentTool} (起点: ${startPos.x.toFixed(0)}, ${startPos.y.toFixed(0)}) → (终点: ${pos.x.toFixed(0)}, ${pos.y.toFixed(0)})`);
+        drawCanvas();
       }
     },
     [isDrawing, isDragging, currentTool, getCanvasCoordinates]
@@ -376,11 +413,10 @@ const ImageAnnotation = ({ src }) => {
         <button onClick={undo} disabled={history.length === 0}>
           撤销
         </button>
-        <button className='delete-btn' onClick={deleteSelected} disabled={!selectedId}>
+        <button className="delete-btn" onClick={deleteSelected} disabled={!selectedId}>
           删除
         </button>
         <button onClick={download}>下载</button>
-        <span className="status">{status}</span>
       </div>
       <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} className="annotation-canvas" />
       {textInput.show && (
@@ -413,6 +449,12 @@ const ImageAnnotation = ({ src }) => {
           />
         </div>
       )}
+
+      <span className="status">{status}</span>
+      <div>
+        <h3>当前标注 ({annotations.length}个):</h3>
+        <pre>{JSON.stringify(annotations, null, 2)}</pre>
+      </div>
     </div>
   );
 };
