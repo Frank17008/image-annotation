@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import ImageAnnotation from './components/ImageAnnotation';
-import './components/ImageAnnotation.css';
 
 const rootElement = document.getElementById('app');
 if (!rootElement) throw new Error('Root element not found in DOM');

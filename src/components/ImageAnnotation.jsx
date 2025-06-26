@@ -376,7 +376,7 @@ const ImageAnnotation = ({ src }) => {
         <button onClick={undo} disabled={history.length === 0}>
           撤销
         </button>
-        <button onClick={deleteSelected} disabled={!selectedId}>
+        <button className='delete-btn' onClick={deleteSelected} disabled={!selectedId}>
           删除
         </button>
         <button onClick={download}>下载</button>
