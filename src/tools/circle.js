@@ -1,7 +1,7 @@
 // 绘制圆形
-export const drawCircle = (ctx, annotation) => {
+export const drawCircle = (ctx, annotation, lineWidth) => {
   ctx.strokeStyle = annotation.color;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = lineWidth;
   ctx.beginPath();
   ctx.arc(annotation.x, annotation.y, annotation.radius, 0, Math.PI * 2);
   ctx.stroke();

@@ -55,7 +55,7 @@ export const startTextInput = (x, y, editId = null, annotations) => {
 };
 
 // 完成文字输入
-export const finishTextInput = (textInput, annotations, setAnnotations, saveHistory) => {
+export const finishTextInput = (textInput, annotations, setAnnotations, saveHistory, canvas) => {
   const text = textInput.text.trim();
   if (!text) {
     return { ...textInput, show: false };
@@ -73,15 +73,11 @@ export const finishTextInput = (textInput, annotations, setAnnotations, saveHist
   } else {
     // 添加新文字
     saveHistory();
-    const canvas = document.createElement('canvas');
     // 确保文字位置在合理范围内
     const x = Math.max(0, Math.min(textInput.x, canvas.width - 200));
     const y = Math.max(16, Math.min(textInput.y, canvas.height - 10));
 
-    setAnnotations((prev) => [
-      ...prev,
-      createTextAnnotation(x, y, text)
-    ]);
+    setAnnotations((prev) => [...prev, createTextAnnotation(x, y, text)]);
   }
   return { ...textInput, show: false };
 };

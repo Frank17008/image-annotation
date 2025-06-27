@@ -1,47 +1,3 @@
-// 绘制箭头函数
-export const drawArrow = (ctx, fromX, fromY, toX, toY, color) => {
-  const headLength = 15;
-  const angle = Math.atan2(toY - fromY, toX - fromX);
-
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-
-  // 箭杆
-  ctx.beginPath();
-  ctx.moveTo(fromX, fromY);
-  ctx.lineTo(toX, toY);
-  ctx.stroke();
-
-  // 箭头
-  ctx.beginPath();
-  ctx.moveTo(toX, toY);
-  ctx.lineTo(
-    toX - headLength * Math.cos(angle - Math.PI / 6),
-    toY - headLength * Math.sin(angle - Math.PI / 6)
-  );
-  ctx.moveTo(toX, toY);
-  ctx.lineTo(
-    toX - headLength * Math.cos(angle + Math.PI / 6),
-    toY - headLength * Math.sin(angle + Math.PI / 6)
-  );
-  ctx.stroke();
-};
-
-// 绘制控制点
-export const drawControlPoint = (
-  ctx,
-  x,
-  y,
-  color1 = '#FF0000',
-  color2 = '#FFFFFF'
-) => {
-  ctx.fillStyle = color2;
-  ctx.strokeStyle = color1;
-  ctx.beginPath();
-  ctx.arc(x, y, 5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-};
 
 // 获取标注的外接矩形
 export const getBoundingBox = (ann, ctx) => {
@@ -97,16 +53,11 @@ export const getBoundingBox = (ann, ctx) => {
 export const isInControlPoint = (ann, x, y, ctx) => {
   if (ann.type === 'freehand') return false;
   const boundingBox = getBoundingBox(ann, ctx);
-
   return (
-    (Math.abs(x - boundingBox.x) < 6 &&
-      Math.abs(y - boundingBox.y) < 6) ||
-    (Math.abs(x - (boundingBox.x + boundingBox.width)) < 6 &&
-      Math.abs(y - boundingBox.y) < 6) ||
-    (Math.abs(x - (boundingBox.x + boundingBox.width)) < 6 &&
-      Math.abs(y - (boundingBox.y + boundingBox.height)) < 6) ||
-    (Math.abs(x - boundingBox.x) < 6 &&
-      Math.abs(y - (boundingBox.y + boundingBox.height)) < 6)
+    (Math.abs(x - boundingBox.x) < 6 && Math.abs(y - boundingBox.y) < 6) ||
+    (Math.abs(x - (boundingBox.x + boundingBox.width)) < 6 && Math.abs(y - boundingBox.y) < 6) ||
+    (Math.abs(x - (boundingBox.x + boundingBox.width)) < 6 && Math.abs(y - (boundingBox.y + boundingBox.height)) < 6) ||
+    (Math.abs(x - boundingBox.x) < 6 && Math.abs(y - (boundingBox.y + boundingBox.height)) < 6)
   );
 };
 
@@ -143,18 +94,10 @@ export const isInAnnotation = (ann, x, y, ctx) => {
     // 判断点是否在矩形边框上
     const lineWidth = 2; // 匹配绘制时的线宽
     return (
-      (Math.abs(x - ann.x) <= lineWidth &&
-        y >= ann.y &&
-        y <= ann.y + ann.height) || // 左边线
-      (Math.abs(x - (ann.x + ann.width)) <= lineWidth &&
-        y >= ann.y &&
-        y <= ann.y + ann.height) || // 右边线
-      (Math.abs(y - ann.y) <= lineWidth &&
-        x >= ann.x &&
-        x <= ann.x + ann.width) || // 上边线
-      (Math.abs(y - (ann.y + ann.height)) <= lineWidth &&
-        x >= ann.x &&
-        x <= ann.x + ann.width) // 下边线
+      (Math.abs(x - ann.x) <= lineWidth && y >= ann.y && y <= ann.y + ann.height) || // 左边线
+      (Math.abs(x - (ann.x + ann.width)) <= lineWidth && y >= ann.y && y <= ann.y + ann.height) || // 右边线
+      (Math.abs(y - ann.y) <= lineWidth && x >= ann.x && x <= ann.x + ann.width) || // 上边线
+      (Math.abs(y - (ann.y + ann.height)) <= lineWidth && x >= ann.x && x <= ann.x + ann.width) // 下边线
     );
   } else if (ann.type === 'circle') {
     // 判断点是否在圆周上（考虑线宽）
@@ -162,23 +105,11 @@ export const isInAnnotation = (ann, x, y, ctx) => {
     return Math.abs(distance - ann.radius) <= 2; // 2px误差范围
   } else if (ann.type === 'arrow') {
     // 使用原有的线段判断方法
-    return isPointNearLine(
-      x,
-      y,
-      ann.x,
-      ann.y,
-      ann.x + ann.width,
-      ann.y + ann.height
-    );
+    return isPointNearLine(x, y, ann.x, ann.y, ann.x + ann.width, ann.y + ann.height);
   } else if (ann.type === 'text') {
     // 文字保持原有判断方式
     const boundingBox = getBoundingBox(ann, ctx);
-    return (
-      x >= boundingBox.x &&
-      x <= boundingBox.x + boundingBox.width &&
-      y >= boundingBox.y &&
-      y <= boundingBox.y + boundingBox.height
-    );
+    return x >= boundingBox.x && x <= boundingBox.x + boundingBox.width && y >= boundingBox.y && y <= boundingBox.y + boundingBox.height;
   } else if (ann.type === 'freehand') {
     // 自由绘制路径检测
     for (let i = 0; i < ann.points.length - 1; i++) {

@@ -1,7 +1,7 @@
-export const drawFreehand = (ctx, annotation) => {
+export const drawFreehand = (ctx, annotation, lineWidth) => {
   if (annotation.points.length < 2) return;
   ctx.strokeStyle = annotation.color;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = lineWidth;
   ctx.beginPath();
   ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
   for (let i = 1; i < annotation.points.length; i++) {

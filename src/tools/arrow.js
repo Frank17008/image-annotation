@@ -1,15 +1,26 @@
-import { drawArrow } from '../utils/canvasUtils';
-
 // 绘制箭头标注
-export const drawArrowAnnotation = (ctx, annotation) => {
-  drawArrow(
-    ctx,
-    annotation.x,
-    annotation.y,
-    annotation.x + annotation.width,
-    annotation.y + annotation.height,
-    annotation.color
-  );
+export const drawArrow = (ctx, fromX, fromY, toX, toY, color) => {
+  if (Math.abs(toX - fromX) < 5 && Math.abs(toY - fromY) < 5) return;
+
+  const headLength = 15;
+  const angle = Math.atan2(toY - fromY, toX - fromX);
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+
+  // 箭杆
+  ctx.beginPath();
+  ctx.moveTo(fromX, fromY);
+  ctx.lineTo(toX, toY);
+  ctx.stroke();
+
+  // 箭头
+  ctx.beginPath();
+  ctx.moveTo(toX, toY);
+  ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6));
+  ctx.moveTo(toX, toY);
+  ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6));
+  ctx.stroke();
 };
 
 // 创建箭头标注

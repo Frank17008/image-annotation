@@ -1,6 +1,6 @@
-export const drawRectangle = (ctx, annotation) => {
+export const drawRectangle = (ctx, annotation, lineWidth) => {
   ctx.strokeStyle = annotation.color;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = lineWidth;
   ctx.strokeRect(annotation.x, annotation.y, annotation.width, annotation.height);
 };
 
