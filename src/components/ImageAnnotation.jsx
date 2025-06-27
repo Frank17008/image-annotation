@@ -336,7 +336,7 @@ const ImageAnnotation = ({ src }) => {
 
   const handleMouseDown = (e) => {
     // 鼠标左键双击或鼠标右键
-    if (e.detail === 2 || e.detail === 1) return;
+    if (e.detail === 2 || e.button === 2) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
