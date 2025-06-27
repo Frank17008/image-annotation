@@ -1,5 +1,4 @@
 export const drawFreehand = (ctx, annotation, lineWidth) => {
-  if (annotation.points.length < 2) return;
   ctx.strokeStyle = annotation.color;
   ctx.lineWidth = lineWidth;
   ctx.beginPath();

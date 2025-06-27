@@ -98,7 +98,6 @@ const ImageAnnotation = ({ src }) => {
             ? {
                 ...ann,
                 text,
-                // 保持原始位置不变
                 x: ann.x,
                 y: ann.y,
               }
@@ -243,6 +242,9 @@ const ImageAnnotation = ({ src }) => {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    const strokeStyle = '#FF0000';
+    const lineWidth = 2;
+
     // 绘制图片
     if (imageRef.current) {
       // 计算等比例缩放尺寸
@@ -266,19 +268,21 @@ const ImageAnnotation = ({ src }) => {
     annotations.forEach((ann) => {
       switch (ann.type) {
         case 'rectangle':
-          drawRectangle(ctx, ann, 2);
+          drawRectangle(ctx, ann, lineWidth);
           break;
         case 'circle':
-          drawCircle(ctx, ann, 2);
+          console.log('circle', ann);
+          
+          drawCircle(ctx, ann, lineWidth);
           break;
         case 'arrow':
-          drawArrow(ctx, ann.x, ann.y, ann.x + ann.width, ann.y + ann.height, ann.color);
+          drawArrow(ctx, { ...ann, fromX: ann.x, fromY: ann.y, toX: ann.x + ann.width, toY: ann.y + ann.height }, lineWidth);
           break;
         case 'text':
           drawText(ctx, ann, textInput);
           break;
         case 'freehand':
-          drawFreehand(ctx, ann, 2);
+          drawFreehand(ctx, ann, lineWidth);
           break;
         default:
           break;
@@ -287,7 +291,6 @@ const ImageAnnotation = ({ src }) => {
       // 绘制选中状态, 自由绘制和文字除外
       if (ann.id === selectedId && ann.type !== 'freehand' && ann.type !== 'text') {
         const boundingBox = getBoundingBox(ann, ctx);
-
         if (ann.type === 'arrow') {
           // 只绘制两端控制点
           drawControlPoint(ctx, ann.x, ann.y);
@@ -310,20 +313,19 @@ const ImageAnnotation = ({ src }) => {
 
     // 绘制当前激活的新标注
     if (isDrawing && currentTool) {
-      const strokeStyle = '#FF0000';
-      const lineWidth = 2;
       const width = currentPos.x - startPos.x;
       const height = currentPos.y - startPos.y;
       switch (currentTool) {
         case 'rectangle':
-          drawRectangle(ctx, { x: startPos.x, y: startPos.y, width, height }, lineWidth);
+          drawRectangle(ctx, { x: startPos.x, y: startPos.y, width, height, color: strokeStyle }, lineWidth);
           break;
         case 'circle':
-          const radius = Math.sqrt(width * width + height * height);
-          drawCircle(ctx, { color: strokeStyle, x: startPos.x, y: startPos.y, radius }, lineWidth);
+          const radius = Math.sqrt(width ** 2 + height ** 2);
+          console.log('radius', radius);
+          drawCircle(ctx, { x: startPos.x, y: startPos.y, radius, color: strokeStyle }, lineWidth);
           break;
         case 'arrow':
-          drawArrow(ctx, startPos.x, startPos.y, currentPos.x, currentPos.y, strokeStyle);
+          drawArrow(ctx, { fromX: startPos.x, fromY: startPos.y, toX: currentPos.x, toY: currentPos.y, color: strokeStyle }, lineWidth);
           break;
         case 'freehand':
           drawFreehand(ctx, { points: freehandPath, color: strokeStyle }, lineWidth);
@@ -335,8 +337,8 @@ const ImageAnnotation = ({ src }) => {
   };
 
   const handleMouseDown = (e) => {
-    // 鼠标左键双击或鼠标右键
-    if (e.detail === 2 || e.button === 2) return;
+    // 鼠标左键双击\鼠标右键\未选中绘制工具
+    if (e.detail === 2 || e.button === 2 || !currentTool) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -360,55 +362,21 @@ const ImageAnnotation = ({ src }) => {
       return;
     }
 
-    // 检查是否点击了自由绘制线条（优先于其他检查）
-    const clickedFreehand = [...annotations].reverse().find((ann) => ann.type === 'freehand' && isInAnnotation(ann, x, y, ctx));
-    if (clickedFreehand) {
-      setIsDragging(true);
-      setSelectedId(clickedFreehand.id);
-      setStartPos({ x, y });
-      setCurrentPos({ x, y });
-      return;
-    }
-
-    // 检查是否点击了已有标注
-    if (selectedId) {
-      const selectedAnn = annotations.find((a) => a.id === selectedId);
-      if (selectedAnn) {
-        // 先检查控制点
-        if (isInControlPoint(selectedAnn, x, y, ctx)) {
-          setIsDrawing(true);
-          setStartPos({ x, y });
-          setCurrentPos({ x, y });
-          return;
-        }
-
-        // 再检查是否在标注本身上
-        if (isInAnnotation(selectedAnn, x, y, ctx)) {
-          setIsDragging(true);
-          setStartPos({ x, y });
-          setCurrentPos({ x, y });
-          return;
-        }
-      } else {
-        setSelectedId(null);
-      }
-    }
-
-    // 检查是否点击了其他标注（非当前选中标注）
-    const clickedAnnotation = [...annotations].reverse().find((ann) => ann.id !== selectedId && isInAnnotation(ann, x, y, ctx));
-
+     // 检查是否点击了标注
+    const clickedAnnotation = [...annotations].reverse().find((ann) => isInAnnotation(ann, x, y, ctx));
     if (clickedAnnotation) {
       setSelectedId(clickedAnnotation.id);
-      return;
+      setIsDragging(true);
+      setIsDrawing(false);
+    } else {
+      setSelectedId(null);
+      setIsDragging(false);
+      setIsDrawing(true);
     }
-
-    // 只有点击空白处且没有选中任何内容时，才启用绘制功能
-    if (!currentTool) return;
 
     if (currentTool === 'freehand') {
       setFreehandPath([{ x, y }]);
     }
-    setIsDrawing(true);
     setStartPos({ x, y });
     setCurrentPos({ x, y });
     setStatus(`正在绘制 ${currentTool} (起点: ${x.toFixed(0)}, ${y.toFixed(0)})`);
@@ -464,21 +432,14 @@ const ImageAnnotation = ({ src }) => {
           return ann;
         })
       );
-
       setCurrentPos({ x, y });
-      drawCanvas();
-      return;
-    }
-
-    // 自由绘制处理
-    if (isDrawing && currentTool === 'freehand') {
-      setFreehandPath((prev) => [...prev, { x, y }]);
       drawCanvas();
       return;
     }
 
     // 绘制新标注或调整控制点
     if (isDrawing) {
+      if(currentTool === 'freehand') setFreehandPath((prev) => [...prev, { x, y }]);
       setCurrentPos({ x, y });
       setStatus(`正在绘制 ${currentTool} (起点: ${startPos.x.toFixed(0)}, ${startPos.y.toFixed(0)}) → (终点: ${x.toFixed(0)}, ${y.toFixed(0)})`);
       drawCanvas();
@@ -486,54 +447,40 @@ const ImageAnnotation = ({ src }) => {
   };
 
   const handleMouseUp = () => {
-    if (!isDrawing && !isDragging) return;
-    // 自由绘制的结束处理
-    if (currentTool === 'freehand' && freehandPath.length > 1) {
-      saveHistory();
-      setAnnotations((prev) => [
-        ...prev,
-        {
-          id: `${prev.length + 1}`,
-          type: 'freehand',
-          points: [...freehandPath],
-          color: '#FF0000',
-        },
-      ]);
-      setFreehandPath([]);
-      setStatus(`已添加自由绘制线条 (共 ${annotations.length + 1} 个)`);
-    }
-    setIsDrawing(false);
-    setIsDragging(false);
+    if (!isDrawing && !isDragging || !currentTool) return;
     if (isDragging) {
       saveHistory();
+      setIsDrawing(false);
+      setIsDragging(false);
       setStatus('已移动选中标注');
       return;
     }
-
-    if (!currentTool) return;
-
     const width = currentPos.x - startPos.x;
     const height = currentPos.y - startPos.y;
-
     // 只有距离足够时才添加
-    if (Math.abs(width) > 5 || Math.abs(height) > 5) {
+    if (Math.abs(width) > 3 || Math.abs(height) > 3) {
       saveHistory();
+      const points = currentTool === 'freehand' ? { points: [...freehandPath] } : {};
+      const radius = currentTool === 'circle' ? { radius: Math.sqrt(width ** 2 + height ** 2) } : {};
       const newAnnotation = {
         id: `${annotations.length + 1}`,
         type: currentTool,
         x: startPos.x,
         y: startPos.y,
         width,
-        height,
-        radius: currentTool === 'circle' ? Math.sqrt(width * width + height * height) : undefined,
+        height,        
         color: '#FF0000',
+        ...points,
+        ...radius
       };
-
+      freehandPath.length > 0 && setFreehandPath([]);
       setAnnotations((prev) => [...prev, newAnnotation]);
       setStatus(`已添加 ${currentTool} 标注 (共 ${annotations.length + 1} 个)`);
     } else {
       setStatus('绘制距离太短，已取消');
     }
+    setIsDrawing(false);
+    setIsDragging(false);
   };
 
   const clearCanvas = () => {

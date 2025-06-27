@@ -1,12 +1,11 @@
 // 绘制箭头标注
-export const drawArrow = (ctx, fromX, fromY, toX, toY, color) => {
+export const drawArrow = (ctx, annotation, lineWidth) => {  
+  const { fromX, fromY, toX, toY, color } = annotation;
   if (Math.abs(toX - fromX) < 5 && Math.abs(toY - fromY) < 5) return;
-
   const headLength = 15;
   const angle = Math.atan2(toY - fromY, toX - fromX);
-
   ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = lineWidth;
 
   // 箭杆
   ctx.beginPath();

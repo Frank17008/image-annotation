@@ -21,15 +21,3 @@ export const createCircleAnnotation = (startPos, currentPos) => {
     color: '#FF0000',
   };
 };
-
-// 绘制临时圆形（拖拽过程中）
-export const drawTemporaryCircle = (ctx, startPos, currentPos) => {
-  ctx.strokeStyle = '#FF0000';
-  ctx.lineWidth = 2;
-  const radius = Math.sqrt(
-    Math.pow(currentPos.x - startPos.x, 2) + Math.pow(currentPos.y - startPos.y, 2)
-  );
-  ctx.beginPath();
-  ctx.arc(startPos.x, startPos.y, radius, 0, Math.PI * 2);
-  ctx.stroke();
-};
