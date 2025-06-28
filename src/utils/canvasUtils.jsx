@@ -123,3 +123,15 @@ export const isInAnnotation = (ann, x, y, ctx) => {
   }
   return false;
 };
+
+
+export function throttle(func, delay) {
+    let lastCall = 0;
+    return function(...args) {
+        const now = new Date().getTime();
+        if (now - lastCall >= delay) {
+            func.apply(this, args);
+            lastCall = now;
+        }
+    };
+}

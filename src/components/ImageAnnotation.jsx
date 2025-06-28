@@ -5,7 +5,7 @@ import { drawCircle, createCircleAnnotation, drawTemporaryCircle } from '../tool
 import { drawFreehand, createFreehandAnnotation, drawTemporaryFreehand } from '../tools/freehand';
 import { drawRectangle, createRectangleAnnotation, drawTemporaryRectangle } from '../tools/rectangle';
 import { drawText, startTextInput as startTextInputTool, finishTextInput as finishTextInputTool, handleTextChange as handleTextChangeTool } from '../tools/text';
-import { isInAnnotation, isInControlPoint } from '../utils/canvasUtils';
+import { isInAnnotation, throttle, isInControlPoint } from '../utils/canvasUtils';
 import './ImageAnnotation.css';
 
 // 设置canvas默认尺寸
@@ -34,7 +34,6 @@ const ImageAnnotation = ({ src }) => {
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
   const textAreaRef = useRef(null);
-
   const textAreaTop = useMemo(() => {
     return textInput.y - textInput.height / 2 <= 10 ? 10 : textInput.y - textInput.height / 2;
   }, [textInput]);
@@ -234,107 +233,108 @@ const ImageAnnotation = ({ src }) => {
   }, [src]);
 
   // 绘制画布
-  const drawCanvas = () => {
+  const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    requestAnimationFrame(() => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const strokeStyle = '#FF0000';
+      const lineWidth = 2;
 
-    const strokeStyle = '#FF0000';
-    const lineWidth = 2;
+      // 绘制图片
+      if (imageRef.current) {
+        // 计算等比例缩放尺寸
+        const ratio = Math.min(DEFAULT_WIDTH / imageRef.current.naturalWidth, DEFAULT_HEIGHT / imageRef.current.naturalHeight);
+        const displayWidth = imageRef.current.naturalWidth * ratio;
+        const displayHeight = imageRef.current.naturalHeight * ratio;
 
-    // 绘制图片
-    if (imageRef.current) {
-      // 计算等比例缩放尺寸
-      const ratio = Math.min(DEFAULT_WIDTH / imageRef.current.naturalWidth, DEFAULT_HEIGHT / imageRef.current.naturalHeight);
-      const displayWidth = imageRef.current.naturalWidth * ratio;
-      const displayHeight = imageRef.current.naturalHeight * ratio;
+        // 居中绘制图片
+        const offsetX = (DEFAULT_WIDTH - displayWidth) / 2;
+        const offsetY = (DEFAULT_HEIGHT - displayHeight) / 2;
 
-      // 居中绘制图片
-      const offsetX = (DEFAULT_WIDTH - displayWidth) / 2;
-      const offsetY = (DEFAULT_HEIGHT - displayHeight) / 2;
+        ctx.drawImage(imageRef.current, offsetX, offsetY, displayWidth, displayHeight);
 
-      ctx.drawImage(imageRef.current, offsetX, offsetY, displayWidth, displayHeight);
-
-      // 保存缩放和偏移信息用于坐标转换
-      canvas.dataset.scale = ratio;
-      canvas.dataset.offsetX = offsetX;
-      canvas.dataset.offsetY = offsetY;
-    }
-
-    // 绘制已有标注
-    annotations.forEach((ann) => {
-      switch (ann.type) {
-        case 'rectangle':
-          drawRectangle(ctx, ann, lineWidth);
-          break;
-        case 'circle':
-          console.log('circle', ann);
-          
-          drawCircle(ctx, ann, lineWidth);
-          break;
-        case 'arrow':
-          drawArrow(ctx, { ...ann, fromX: ann.x, fromY: ann.y, toX: ann.x + ann.width, toY: ann.y + ann.height }, lineWidth);
-          break;
-        case 'text':
-          drawText(ctx, ann, textInput);
-          break;
-        case 'freehand':
-          drawFreehand(ctx, ann, lineWidth);
-          break;
-        default:
-          break;
+        // 保存缩放和偏移信息用于坐标转换
+        canvas.dataset.scale = ratio;
+        canvas.dataset.offsetX = offsetX;
+        canvas.dataset.offsetY = offsetY;
       }
 
-      // 绘制选中状态, 自由绘制和文字除外
-      if (ann.id === selectedId && ann.type !== 'freehand' && ann.type !== 'text') {
-        const boundingBox = getBoundingBox(ann, ctx);
-        if (ann.type === 'arrow') {
-          // 只绘制两端控制点
-          drawControlPoint(ctx, ann.x, ann.y);
-          drawControlPoint(ctx, ann.x + ann.width, ann.y + ann.height);
-        } else {
-          // 其他类型绘制外接框和控制点
-          ctx.setLineDash([3, 3]);
-          ctx.strokeStyle = '#1890ff';
-          ctx.strokeRect(boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height);
-          ctx.setLineDash([]);
+      // 绘制已有标注
+      annotations.forEach((ann) => {
+        switch (ann.type) {
+          case 'rectangle':
+            drawRectangle(ctx, ann, lineWidth);
+            break;
+          case 'circle':
+            console.log('circle', ann);
 
-          // 绘制控制点
-          drawControlPoint(ctx, boundingBox.x, boundingBox.y);
-          drawControlPoint(ctx, boundingBox.x + boundingBox.width, boundingBox.y);
-          drawControlPoint(ctx, boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height);
-          drawControlPoint(ctx, boundingBox.x, boundingBox.y + boundingBox.height);
+            drawCircle(ctx, ann, lineWidth);
+            break;
+          case 'arrow':
+            drawArrow(ctx, { ...ann, fromX: ann.x, fromY: ann.y, toX: ann.x + ann.width, toY: ann.y + ann.height }, lineWidth);
+            break;
+          case 'text':
+            drawText(ctx, ann, textInput);
+            break;
+          case 'freehand':
+            drawFreehand(ctx, ann, lineWidth);
+            break;
+          default:
+            break;
+        }
+
+        // 绘制选中状态, 自由绘制和文字除外
+        if (ann.id === selectedId && ann.type !== 'freehand' && ann.type !== 'text') {
+          const boundingBox = getBoundingBox(ann, ctx);
+          if (ann.type === 'arrow') {
+            // 只绘制两端控制点
+            drawControlPoint(ctx, ann.x, ann.y);
+            drawControlPoint(ctx, ann.x + ann.width, ann.y + ann.height);
+          } else {
+            // 其他类型绘制外接框和控制点
+            ctx.setLineDash([3, 3]);
+            ctx.strokeStyle = '#1890ff';
+            ctx.strokeRect(boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height);
+            ctx.setLineDash([]);
+
+            // 绘制控制点
+            drawControlPoint(ctx, boundingBox.x, boundingBox.y);
+            drawControlPoint(ctx, boundingBox.x + boundingBox.width, boundingBox.y);
+            drawControlPoint(ctx, boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height);
+            drawControlPoint(ctx, boundingBox.x, boundingBox.y + boundingBox.height);
+          }
+        }
+      });
+
+      // 绘制当前激活的新标注
+      if (isDrawing && currentTool) {
+        const width = currentPos.x - startPos.x;
+        const height = currentPos.y - startPos.y;
+        switch (currentTool) {
+          case 'rectangle':
+            drawRectangle(ctx, { x: startPos.x, y: startPos.y, width, height, color: strokeStyle }, lineWidth);
+            break;
+          case 'circle':
+            const radius = Math.sqrt(width ** 2 + height ** 2);
+            console.log('radius', radius);
+            drawCircle(ctx, { x: startPos.x, y: startPos.y, radius, color: strokeStyle }, lineWidth);
+            break;
+          case 'arrow':
+            drawArrow(ctx, { fromX: startPos.x, fromY: startPos.y, toX: currentPos.x, toY: currentPos.y, color: strokeStyle }, lineWidth);
+            break;
+          case 'freehand':
+            drawFreehand(ctx, { points: freehandPath, color: strokeStyle }, lineWidth);
+            break;
+          default:
+            break;
         }
       }
     });
-
-    // 绘制当前激活的新标注
-    if (isDrawing && currentTool) {
-      const width = currentPos.x - startPos.x;
-      const height = currentPos.y - startPos.y;
-      switch (currentTool) {
-        case 'rectangle':
-          drawRectangle(ctx, { x: startPos.x, y: startPos.y, width, height, color: strokeStyle }, lineWidth);
-          break;
-        case 'circle':
-          const radius = Math.sqrt(width ** 2 + height ** 2);
-          console.log('radius', radius);
-          drawCircle(ctx, { x: startPos.x, y: startPos.y, radius, color: strokeStyle }, lineWidth);
-          break;
-        case 'arrow':
-          drawArrow(ctx, { fromX: startPos.x, fromY: startPos.y, toX: currentPos.x, toY: currentPos.y, color: strokeStyle }, lineWidth);
-          break;
-        case 'freehand':
-          drawFreehand(ctx, { points: freehandPath, color: strokeStyle }, lineWidth);
-          break;
-        default:
-          break;
-      }
-    }
-  };
+  }, [annotations, isDragging, isDrawing, currentTool, startPos, currentPos, freehandPath]);
 
   const handleMouseDown = (e) => {
     // 鼠标左键双击\鼠标右键\未选中绘制工具
@@ -362,7 +362,7 @@ const ImageAnnotation = ({ src }) => {
       return;
     }
 
-     // 检查是否点击了标注
+    // 检查是否点击了标注
     const clickedAnnotation = [...annotations].reverse().find((ann) => isInAnnotation(ann, x, y, ctx));
     if (clickedAnnotation) {
       setSelectedId(clickedAnnotation.id);
@@ -391,7 +391,7 @@ const ImageAnnotation = ({ src }) => {
     }
   };
   const handleContextMenu = () => {
-    if(selectedId) {
+    if (selectedId) {
       setSelectedId(null);
     }
   };
@@ -439,15 +439,16 @@ const ImageAnnotation = ({ src }) => {
 
     // 绘制新标注或调整控制点
     if (isDrawing) {
-      if(currentTool === 'freehand') setFreehandPath((prev) => [...prev, { x, y }]);
+      if (currentTool === 'freehand') setFreehandPath((prev) => [...prev, { x, y }]);
       setCurrentPos({ x, y });
       setStatus(`正在绘制 ${currentTool} (起点: ${startPos.x.toFixed(0)}, ${startPos.y.toFixed(0)}) → (终点: ${x.toFixed(0)}, ${y.toFixed(0)})`);
       drawCanvas();
     }
   };
 
+  const throttledMouseMove = useMemo(() => throttle(handleMouseMove, 50), [handleMouseMove]);
   const handleMouseUp = () => {
-    if (!isDrawing && !isDragging || !currentTool) return;
+    if ((!isDrawing && !isDragging) || !currentTool) return;
     if (isDragging) {
       saveHistory();
       setIsDrawing(false);
@@ -468,10 +469,10 @@ const ImageAnnotation = ({ src }) => {
         x: startPos.x,
         y: startPos.y,
         width,
-        height,        
+        height,
         color: '#FF0000',
         ...points,
-        ...radius
+        ...radius,
       };
       freehandPath.length > 0 && setFreehandPath([]);
       setAnnotations((prev) => [...prev, newAnnotation]);
@@ -572,7 +573,7 @@ const ImageAnnotation = ({ src }) => {
         <canvas
           ref={canvasRef}
           onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
+          onMouseMove={throttledMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           onDoubleClick={handleDoucbleClick}
