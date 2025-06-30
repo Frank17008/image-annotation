@@ -5,21 +5,24 @@ import { drawCircle, createCircleAnnotation, drawTemporaryCircle } from '../tool
 import { drawFreehand, createFreehandAnnotation, drawTemporaryFreehand } from '../tools/freehand';
 import { drawRectangle, createRectangleAnnotation, drawTemporaryRectangle } from '../tools/rectangle';
 import { drawText, startTextInput as startTextInputTool, finishTextInput as finishTextInputTool, handleTextChange as handleTextChangeTool } from '../tools/text';
-import { isInAnnotation, throttle, isInControlPoint } from '../utils/canvasUtils';
+import { isInAnnotation, throttle } from '../utils/canvasUtils';
 import './ImageAnnotation.css';
 
 // 设置canvas默认尺寸
 const DEFAULT_WIDTH = 800;
 const DEFAULT_HEIGHT = 600;
 const ImageAnnotation = ({ src }) => {
+  const [drawState, setDrawState] = useState({
+    isDrawing: false, // 是否正在绘制标注
+    isDragging: false, // 是否正在拖动标注
+    startPos: { x: 0, y: 0 }, // 鼠标起始位置
+    currentPos: { x: 0, y: 0 }, // 鼠标当前位置
+    freehandPath: [], // 存储自由绘制路径点
+    selectedId: null, // 正在操作的标注ID
+  });
   const [annotations, setAnnotations] = useState([]);
   const [history, setHistory] = useState([]);
   const [currentTool, setCurrentTool] = useState(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
-  const [currentPos, setCurrentPos] = useState({ x: 0, y: 0 });
-  const [freehandPath, setFreehandPath] = useState([]); // 存储自由绘制路径点
   const [textInput, setTextInput] = useState({
     show: false,
     x: 0,
@@ -30,10 +33,10 @@ const ImageAnnotation = ({ src }) => {
     editId: null, // 正在编辑的标注ID
   });
   const [status, setStatus] = useState('请选择工具开始标注');
-  const [selectedId, setSelectedId] = useState(null);
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
   const textAreaRef = useRef(null);
+  const reqAniRef = useRef(null);
   const textAreaTop = useMemo(() => {
     return textInput.y - textInput.height / 2 <= 10 ? 10 : textInput.y - textInput.height / 2;
   }, [textInput]);
@@ -188,20 +191,20 @@ const ImageAnnotation = ({ src }) => {
       const lastState = history[history.length - 1];
       setHistory((prev) => prev.slice(0, -1));
       setAnnotations(lastState);
-      setSelectedId(null);
+      setDrawState({ ...drawState, selectedId: null });
       setStatus(`已回退上一步操作 (剩余 ${history.length - 1} 步历史)`);
     }
   };
 
   // 删除选中元素
-  const deleteSelected = () => {
-    if (selectedId) {
+  const deleteSelected = useCallback(() => {
+    if (drawState.selectedId) {
       saveHistory();
-      setAnnotations((prev) => prev.filter((a) => a.id !== selectedId));
-      setSelectedId(null);
+      setAnnotations((prev) => prev.filter((a) => a.id !== drawState.selectedId));
+      setDrawState({ ...drawState, selectedId: null });
       setStatus('已删除选中标注');
     }
-  };
+  }, [drawState.selectedId, annotations]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -238,7 +241,8 @@ const ImageAnnotation = ({ src }) => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    requestAnimationFrame(() => {
+    const { startPos, currentPos, isDrawing, selectedId, freehandPath } = drawState;
+    reqAniRef.current = requestAnimationFrame(() => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const strokeStyle = '#FF0000';
@@ -270,8 +274,6 @@ const ImageAnnotation = ({ src }) => {
             drawRectangle(ctx, ann, lineWidth);
             break;
           case 'circle':
-            console.log('circle', ann);
-
             drawCircle(ctx, ann, lineWidth);
             break;
           case 'arrow':
@@ -320,7 +322,6 @@ const ImageAnnotation = ({ src }) => {
             break;
           case 'circle':
             const radius = Math.sqrt(width ** 2 + height ** 2);
-            console.log('radius', radius);
             drawCircle(ctx, { x: startPos.x, y: startPos.y, radius, color: strokeStyle }, lineWidth);
             break;
           case 'arrow':
@@ -334,7 +335,7 @@ const ImageAnnotation = ({ src }) => {
         }
       }
     });
-  }, [annotations, isDragging, isDrawing, currentTool, startPos, currentPos, freehandPath]);
+  }, [annotations, drawState, currentTool]);
 
   const handleMouseDown = (e) => {
     // 鼠标左键双击\鼠标右键\未选中绘制工具
@@ -364,25 +365,19 @@ const ImageAnnotation = ({ src }) => {
 
     // 检查是否点击了标注
     const clickedAnnotation = [...annotations].reverse().find((ann) => isInAnnotation(ann, x, y, ctx));
-    if (clickedAnnotation) {
-      setSelectedId(clickedAnnotation.id);
-      setIsDragging(true);
-      setIsDrawing(false);
-    } else {
-      setSelectedId(null);
-      setIsDragging(false);
-      setIsDrawing(true);
-    }
-
-    if (currentTool === 'freehand') {
-      setFreehandPath([{ x, y }]);
-    }
-    setStartPos({ x, y });
-    setCurrentPos({ x, y });
+    setDrawState({
+      ...drawState,
+      startPos: { x, y },
+      currentPos: { x, y },
+      freehandPath: currentTool === 'freehand' ? [{ x, y }] : [],
+      selectedId: clickedAnnotation?.id || null,
+      isDragging: !!clickedAnnotation,
+      isDrawing: !clickedAnnotation,
+    });
     setStatus(`正在绘制 ${currentTool} (起点: ${x.toFixed(0)}, ${y.toFixed(0)})`);
   };
 
-  const handleDoucbleClick = () => {
+  const handleDoubleClick = () => {
     const clickedText = annotations.find((a) => a.type === 'text' && isInAnnotation(a, x, y, ctx));
     // 文字进行编辑
     if (clickedText) {
@@ -391,15 +386,15 @@ const ImageAnnotation = ({ src }) => {
     }
   };
   const handleContextMenu = () => {
-    if (selectedId) {
-      setSelectedId(null);
+    if (drawState.selectedId) {
+      setDrawState({ ...drawState, selectedId: null });
     }
   };
 
-  const handleMouseMove = (e) => {
+  const handleMouseMove = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
+    const { startPos, currentPos, isDragging, isDrawing, selectedId, freehandPath } = drawState;
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -409,7 +404,7 @@ const ImageAnnotation = ({ src }) => {
     const isOnAnnotation = annotations.some((ann) => isInAnnotation(ann, x, y, ctx));
     canvas.style.cursor = isOnAnnotation ? 'move' : 'crosshair';
 
-    // 拖动整个标注
+    // 拖动
     if (isDragging && selectedId) {
       const dx = x - currentPos.x;
       const dy = y - currentPos.y;
@@ -432,27 +427,26 @@ const ImageAnnotation = ({ src }) => {
           return ann;
         })
       );
-      setCurrentPos({ x, y });
+      setDrawState({ ...drawState, currentPos: { x, y } });
       drawCanvas();
       return;
     }
 
-    // 绘制新标注或调整控制点
+    // 绘制新标注
     if (isDrawing) {
-      if (currentTool === 'freehand') setFreehandPath((prev) => [...prev, { x, y }]);
-      setCurrentPos({ x, y });
+      setDrawState({ ...drawState, freehandPath: currentTool === 'freehand' ? [...freehandPath, { x, y }] : freehandPath, currentPos: { x, y } });
       setStatus(`正在绘制 ${currentTool} (起点: ${startPos.x.toFixed(0)}, ${startPos.y.toFixed(0)}) → (终点: ${x.toFixed(0)}, ${y.toFixed(0)})`);
       drawCanvas();
     }
-  };
+  }, [drawState, currentTool, annotations]);
 
   const throttledMouseMove = useMemo(() => throttle(handleMouseMove, 50), [handleMouseMove]);
   const handleMouseUp = () => {
-    if ((!isDrawing && !isDragging) || !currentTool) return;
+    const { startPos, currentPos, isDrawing, isDragging, freehandPath } = drawState;
+    if ((isDrawing && isDragging) || !currentTool) return;
     if (isDragging) {
       saveHistory();
-      setIsDrawing(false);
-      setIsDragging(false);
+      setDrawState({ ...drawState, isDragging: false, isDrawing: false });
       setStatus('已移动选中标注');
       return;
     }
@@ -474,20 +468,19 @@ const ImageAnnotation = ({ src }) => {
         ...points,
         ...radius,
       };
-      freehandPath.length > 0 && setFreehandPath([]);
+      freehandPath.length > 0 && setDrawState({ ...drawState, freehandPath: [] });
       setAnnotations((prev) => [...prev, newAnnotation]);
       setStatus(`已添加 ${currentTool} 标注 (共 ${annotations.length + 1} 个)`);
     } else {
       setStatus('绘制距离太短，已取消');
     }
-    setIsDrawing(false);
-    setIsDragging(false);
+    setDrawState({ selectedId: drawState.selectedId, freehandPath: [], startPos: { x: 0, y: 0 }, currentPos: { x: 0, y: 0 }, isDrawing: false, isDragging: false });
   };
 
   const clearCanvas = () => {
     saveHistory();
     setAnnotations([]);
-    setSelectedId(null);
+    setDrawState({ ...drawState, selectedId: null });
     setStatus('已清除所有标注');
   };
   // textarea auto focus
@@ -500,6 +493,7 @@ const ImageAnnotation = ({ src }) => {
   }, [textInput.show, textInput.x]);
 
   useEffect(() => {
+    const { selectedId, isDragging, isDrawing } = drawState;
     if (!isDragging || !isDrawing) {
       drawCanvas();
     }
@@ -508,11 +502,11 @@ const ImageAnnotation = ({ src }) => {
     if (canvas) {
       canvas.style.cursor = selectedId ? 'move' : 'crosshair';
     }
-  }, [annotations, selectedId, isDragging, isDrawing]);
+  }, [annotations, drawState.isDragging, drawState.isDrawing, drawState.selectedId]);
 
   useEffect(() => {
-    if (selectedId && currentTool !== 'freehand') {
-      setSelectedId(null);
+    if (drawState.selectedId && currentTool !== 'freehand') {
+      setDrawState({ ...drawState, selectedId: null });
     }
     if (textInput.show) {
       finishTextInput();
@@ -522,7 +516,7 @@ const ImageAnnotation = ({ src }) => {
   // 键盘事件处理
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Delete' && selectedId) {
+      if (e.key === 'Delete') {
         deleteSelected();
       } else if (e.ctrlKey && e.key === 'z') {
         undo();
@@ -530,8 +524,11 @@ const ImageAnnotation = ({ src }) => {
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedId, deleteSelected, undo]);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      reqAniRef.current && cancelAnimationFrame(reqAniRef.current);
+    };
+  }, [deleteSelected, undo]);
 
   return (
     <div>
@@ -576,7 +573,7 @@ const ImageAnnotation = ({ src }) => {
           onMouseMove={throttledMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          onDoubleClick={handleDoucbleClick}
+          onDoubleClick={handleDoubleClick}
           onContextMenu={handleContextMenu}
         />
         {textInput.show && (
