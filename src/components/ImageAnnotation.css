@@ -5,29 +5,6 @@ body {
 canvas {
   display: block;
 }
-.toolbar {
-  margin-bottom: 15px;
-  padding: 10px;
-  background: #f5f5f5;
-  border-radius: 5px;
-}
-.toolbar button {
-  padding: 8px 15px;
-  margin-right: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: white;
-  cursor: pointer;
-}
-.toolbar button.active {
-  background: #1890ff;
-  color: white;
-  border-color: #1890ff;
-}
-button.delete-btn {
-  background: #ff0000;
-  color: #fff;
-}
 .image-container {
   position: relative;
   display: inline-block;

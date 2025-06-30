@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { ToolBar } from './ToolBar';
 import { drawArrow, createArrowAnnotation, drawTemporaryArrow } from '../tools/arrow';
 import { drawControlPoint, getBoundingBox } from '../tools/common';
 import { drawCircle, createCircleAnnotation, drawTemporaryCircle } from '../tools/circle';
@@ -391,54 +392,57 @@ const ImageAnnotation = ({ src }) => {
     }
   };
 
-  const handleMouseMove = useCallback((e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const { startPos, currentPos, isDragging, isDrawing, selectedId, freehandPath } = drawState;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const ctx = canvas.getContext('2d');
+  const handleMouseMove = useCallback(
+    (e) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const { startPos, currentPos, isDragging, isDrawing, selectedId, freehandPath } = drawState;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const ctx = canvas.getContext('2d');
 
-    // 检查是否在任意标注上
-    const isOnAnnotation = annotations.some((ann) => isInAnnotation(ann, x, y, ctx));
-    canvas.style.cursor = isOnAnnotation ? 'move' : 'crosshair';
+      // 检查是否在任意标注上
+      const isOnAnnotation = annotations.some((ann) => isInAnnotation(ann, x, y, ctx));
+      canvas.style.cursor = isOnAnnotation ? 'move' : 'crosshair';
 
-    // 拖动
-    if (isDragging && selectedId) {
-      const dx = x - currentPos.x;
-      const dy = y - currentPos.y;
+      // 拖动
+      if (isDragging && selectedId) {
+        const dx = x - currentPos.x;
+        const dy = y - currentPos.y;
 
-      setAnnotations((prev) =>
-        prev.map((ann) => {
-          if (ann.id === selectedId) {
-            if (ann.type === 'freehand') {
-              return {
-                ...ann,
-                points: ann.points.map((point) => ({
-                  x: point.x + dx,
-                  y: point.y + dy,
-                })),
-              };
-            } else {
-              return { ...ann, x: ann.x + dx, y: ann.y + dy };
+        setAnnotations((prev) =>
+          prev.map((ann) => {
+            if (ann.id === selectedId) {
+              if (ann.type === 'freehand') {
+                return {
+                  ...ann,
+                  points: ann.points.map((point) => ({
+                    x: point.x + dx,
+                    y: point.y + dy,
+                  })),
+                };
+              } else {
+                return { ...ann, x: ann.x + dx, y: ann.y + dy };
+              }
             }
-          }
-          return ann;
-        })
-      );
-      setDrawState({ ...drawState, currentPos: { x, y } });
-      drawCanvas();
-      return;
-    }
+            return ann;
+          })
+        );
+        setDrawState({ ...drawState, currentPos: { x, y } });
+        drawCanvas();
+        return;
+      }
 
-    // 绘制新标注
-    if (isDrawing) {
-      setDrawState({ ...drawState, freehandPath: currentTool === 'freehand' ? [...freehandPath, { x, y }] : freehandPath, currentPos: { x, y } });
-      setStatus(`正在绘制 ${currentTool} (起点: ${startPos.x.toFixed(0)}, ${startPos.y.toFixed(0)}) → (终点: ${x.toFixed(0)}, ${y.toFixed(0)})`);
-      drawCanvas();
-    }
-  }, [drawState, currentTool, annotations]);
+      // 绘制新标注
+      if (isDrawing) {
+        setDrawState({ ...drawState, freehandPath: currentTool === 'freehand' ? [...freehandPath, { x, y }] : freehandPath, currentPos: { x, y } });
+        setStatus(`正在绘制 ${currentTool} (起点: ${startPos.x.toFixed(0)}, ${startPos.y.toFixed(0)}) → (终点: ${x.toFixed(0)}, ${y.toFixed(0)})`);
+        drawCanvas();
+      }
+    },
+    [drawState, currentTool, annotations]
+  );
 
   const throttledMouseMove = useMemo(() => throttle(handleMouseMove, 50), [handleMouseMove]);
   const handleMouseUp = () => {
@@ -532,40 +536,7 @@ const ImageAnnotation = ({ src }) => {
 
   return (
     <div>
-      <div className="toolbar">
-        <button className={currentTool === 'rectangle' ? 'active' : ''} onClick={() => setCurrentTool('rectangle')}>
-          矩形
-        </button>
-        <button className={currentTool === 'circle' ? 'active' : ''} onClick={() => setCurrentTool('circle')}>
-          圆形
-        </button>
-        <button className={currentTool === 'arrow' ? 'active' : ''} onClick={() => setCurrentTool('arrow')}>
-          箭头
-        </button>
-        <button className={currentTool === 'text' ? 'active' : ''} onClick={() => setCurrentTool('text')}>
-          文字
-        </button>
-        <button className={currentTool === 'freehand' ? 'active' : ''} onClick={() => setCurrentTool('freehand')}>
-          自由线条
-        </button>
-        <button
-          onClick={clearCanvas}
-          style={{
-            marginLeft: '20px',
-            background: '#ff4d4f',
-            color: 'white',
-          }}
-        >
-          清除所有
-        </button>
-        <button onClick={undo} disabled={history.length === 0} style={{ marginLeft: '10px' }}>
-          撤销 (Ctrl+Z)
-        </button>
-        <button onClick={download} style={{ marginLeft: '10px' }}>
-          导出
-        </button>
-      </div>
-
+      <ToolBar currentTool={currentTool} onSelectTool={setCurrentTool} onClear={clearCanvas} onUndo={undo} onDownload={download} historyLength={history.length} />
       <div className="image-container">
         <canvas
           ref={canvasRef}
