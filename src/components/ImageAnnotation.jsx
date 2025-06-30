@@ -38,6 +38,7 @@ const ImageAnnotation = ({ src }) => {
   const imageRef = useRef(null);
   const textAreaRef = useRef(null);
   const reqAniRef = useRef(null);
+  const ctxRef = useRef(null);
   const textAreaTop = useMemo(() => {
     return textInput.y - textInput.height / 2 <= 10 ? 10 : textInput.y - textInput.height / 2;
   }, [textInput]);
@@ -56,11 +57,9 @@ const ImageAnnotation = ({ src }) => {
   // 开始文字输入
   const startTextInput = (x, y, editId = null) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
+    const ctx = ctxRef.current;
+    if (!canvas || !ctx) return;
     ctx.font = '16px Arial';
-
     let text = '';
     let width = 200;
     let height = 24;
@@ -111,8 +110,8 @@ const ImageAnnotation = ({ src }) => {
       // 添加新文字
       saveHistory();
       const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
+      const ctx = ctxRef.current;
+      if (canvas && ctx) {
         ctx.font = '16px Arial';
         // 确保文字位置在合理范围内
         const x = Math.max(0, Math.min(textInput.x, canvas.width - 200));
@@ -136,9 +135,8 @@ const ImageAnnotation = ({ src }) => {
 
   const handleTextChange = (e) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
+    const ctx = ctxRef.current;
+    if (!canvas || !ctx) return;
     ctx.font = '16px Arial';
 
     // 计算最大可用尺寸（考虑canvas边界）
@@ -209,10 +207,10 @@ const ImageAnnotation = ({ src }) => {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-
+    if (!canvas) return;    
     canvas.width = DEFAULT_WIDTH;
     canvas.height = DEFAULT_HEIGHT;
+    ctxRef.current = canvas.getContext('2d');
     const img = new Image();
     img.crossOrigin = 'Anonymous'; // 处理跨域问题
     img.src = src;
@@ -239,9 +237,8 @@ const ImageAnnotation = ({ src }) => {
   // 绘制画布
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const ctx = ctxRef.current;
+    if (!canvas || !ctx) return;
     const { startPos, currentPos, isDrawing, selectedId, freehandPath } = drawState;
     reqAniRef.current = requestAnimationFrame(() => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -343,12 +340,12 @@ const ImageAnnotation = ({ src }) => {
     if (e.detail === 2 || e.button === 2 || !currentTool) return;
 
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const ctx = ctxRef.current;
+    if (!canvas || !ctx) return;
+
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const ctx = canvas.getContext('2d');
-
     // 如果正在输入文字，点击外部完成输入
     if (textInput.show) {
       if (!textInput.text) {
@@ -395,12 +392,13 @@ const ImageAnnotation = ({ src }) => {
   const handleMouseMove = useCallback(
     (e) => {
       const canvas = canvasRef.current;
-      if (!canvas) return;
+      const ctx = ctxRef.current;
+      if (!canvas || !ctx) return;
+
       const { startPos, currentPos, isDragging, isDrawing, selectedId, freehandPath } = drawState;
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      const ctx = canvas.getContext('2d');
 
       // 检查是否在任意标注上
       const isOnAnnotation = annotations.some((ann) => isInAnnotation(ann, x, y, ctx));
