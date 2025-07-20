@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { ToolBar } from './ToolBar';
+import ToolBar from './ToolBar';
+import TextAnnotationInput from './TextAnnotationInput';
 import { drawArrow, createArrowAnnotation, drawTemporaryArrow } from '../tools/arrow';
 import { drawControlPoint, getBoundingBox } from '../tools/common';
 import { drawCircle, createCircleAnnotation, drawTemporaryCircle } from '../tools/circle';
 import { drawFreehand, createFreehandAnnotation, drawTemporaryFreehand } from '../tools/freehand';
 import { drawRectangle, createRectangleAnnotation, drawTemporaryRectangle } from '../tools/rectangle';
-import { drawText, startTextInput as startTextInputTool, finishTextInput as finishTextInputTool, handleTextChange as handleTextChangeTool } from '../tools/text';
+import { drawText } from '../tools/text';
 import { isInAnnotation, throttle } from '../utils/canvasUtils';
 import './ImageAnnotation.css';
 
@@ -25,12 +26,9 @@ const ImageAnnotation = ({ src }) => {
   const [history, setHistory] = useState([]);
   const [currentTool, setCurrentTool] = useState(null);
   const [textInput, setTextInput] = useState({
-    show: false,
-    x: 0,
-    y: 0,
-    width: 200, // 默认文本框宽度
-    height: 24, // 默认文本框高度
-    text: '',
+    visible: false,
+    initialPosition: { x: 0, y: 0 }, // 初始位置
+    editText: '',
     editId: null, // 正在编辑的标注ID
   });
   const [status, setStatus] = useState('请选择工具开始标注');
@@ -39,9 +37,6 @@ const ImageAnnotation = ({ src }) => {
   const textAreaRef = useRef(null);
   const reqAniRef = useRef(null);
   const ctxRef = useRef(null);
-  const textAreaTop = useMemo(() => {
-    return textInput.y - textInput.height / 2 <= 10 ? 10 : textInput.y - textInput.height / 2;
-  }, [textInput]);
 
   const download = () => {
     const canvas = canvasRef.current;
@@ -56,127 +51,38 @@ const ImageAnnotation = ({ src }) => {
 
   // 开始文字输入
   const startTextInput = (x, y, editId = null) => {
-    const canvas = canvasRef.current;
-    const ctx = ctxRef.current;
-    if (!canvas || !ctx) return;
-    ctx.font = '16px Arial';
-    let text = '';
-    let width = 200;
-    let height = 24;
-
     if (editId) {
       const annotation = annotations.find((a) => a.id === editId);
-      if (annotation) {
-        text = annotation.text;
-        // 计算多行文本的尺寸
-        const lines = text.split('\n');
-        height = Math.max(24, lines.length * 20);
-        width = Math.max(...lines.map((line) => ctx.measureText(line).width)) + 10;
-      }
+      setTextInput({
+        visible: true,
+        initialPosition: { x, y },
+        editText: annotation ? annotation.text : '',
+        editId,
+      });
+    } else {
+      setTextInput({
+        visible: true,
+        initialPosition: { x, y },
+        editText: '',
+        editId: null,
+      });
     }
-    setTextInput({
-      show: true,
-      x,
-      y,
-      width,
-      height,
-      text,
-      editId,
-    });
   };
   // 完成文字输入
-  const finishTextInput = () => {
-    const text = textInput.text.trim();
-    if (!text) {
-      setTextInput({ ...textInput, show: false });
-      return;
-    }
-
-    if (textInput.editId) {
-      // 编辑现有文字
-      setAnnotations((prev) =>
-        prev.map((ann) =>
-          ann.id === textInput.editId
-            ? {
-                ...ann,
-                text,
-                x: ann.x,
-                y: ann.y,
-              }
-            : ann
-        )
-      );
+  const handleTextFinish = ({ text, editId, x, y }) => {
+    if (editId) {
+      setAnnotations((prev) => prev.map((ann) => (ann.id === editId ? { ...ann, text, x, y } : ann)));
+      setStatus(`已更新文字标注: ${text}`);
     } else {
-      // 添加新文字
       saveHistory();
-      const canvas = canvasRef.current;
-      const ctx = ctxRef.current;
-      if (canvas && ctx) {
-        ctx.font = '16px Arial';
-        // 确保文字位置在合理范围内
-        const x = Math.max(0, Math.min(textInput.x, canvas.width - 200));
-        const y = Math.max(16, Math.min(textInput.y, canvas.height - 10));
-
-        setAnnotations((prev) => [
-          ...prev,
-          {
-            id: `${prev.length + 1}`,
-            type: 'text',
-            x,
-            y,
-            text,
-            color: '#FF0000',
-          },
-        ]);
-      }
+      setAnnotations((prev) => [...prev, { id: `${prev.length + 1}`, type: 'text', x, y, text, color: '#FF0000' }]);
+      setStatus(`已添加文字标注: ${text}`);
     }
-    setTextInput({ ...textInput, show: false });
+    setTextInput({ ...textInput, visible: false });
   };
-
-  const handleTextChange = (e) => {
-    const canvas = canvasRef.current;
-    const ctx = ctxRef.current;
-    if (!canvas || !ctx) return;
-    ctx.font = '16px Arial';
-
-    // 计算最大可用尺寸（考虑canvas边界）
-    const maxWidth = Math.max(10, canvas.width - textInput.x - 10); // 保留10px边距
-    const maxHeight = Math.max(24, canvas.height - textInput.y - 10); // 最小高度24px
-
-    const input = e.target.value;
-    const lines = input.split('\n');
-
-    // 计算每行宽度和总高度
-    let totalHeight = 0;
-    let maxLineWidth = 0;
-    const lineMetrics = lines.map((line) => {
-      const metrics = ctx.measureText(line);
-      const lineWidth = Math.min(metrics.width, maxWidth);
-      maxLineWidth = Math.max(maxLineWidth, lineWidth);
-      totalHeight += 20; // 行高固定为20px
-      return {
-        line,
-        width: lineWidth,
-      };
-    });
-
-    // 计算最终文本区域尺寸
-    const taWidth = maxLineWidth + 10; // 加10px边距
-    const taHeight = Math.min(totalHeight, maxHeight);
-
-    // 如果达到高度限制，截断文本
-    let finalText = input;
-    if (totalHeight > maxHeight) {
-      const maxLines = Math.floor(maxHeight / 20);
-      finalText = lines.slice(0, maxLines).join('\n');
-    }
-
-    setTextInput({
-      ...textInput,
-      text: finalText,
-      width: taWidth,
-      height: taHeight,
-    });
+  // 取消文字输入
+  const handleTextCancel = () => {
+    setTextInput({ ...textInput, visible: false });
   };
 
   // 保存历史记录
@@ -207,7 +113,7 @@ const ImageAnnotation = ({ src }) => {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;    
+    if (!canvas) return;
     canvas.width = DEFAULT_WIDTH;
     canvas.height = DEFAULT_HEIGHT;
     ctxRef.current = canvas.getContext('2d');
@@ -218,7 +124,6 @@ const ImageAnnotation = ({ src }) => {
       imageRef.current = img;
       drawCanvas();
     };
-
     const resizeCanvas = () => {
       // 只需要调整CSS显示尺寸，保持原始画布尺寸不变
       const container = canvas.parentElement;
@@ -234,37 +139,40 @@ const ImageAnnotation = ({ src }) => {
     return () => window.removeEventListener('resize', resizeCanvas);
   }, [src]);
 
+  // 绘制图片
+  const drawImage = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    if (!canvas || !ctx || !imageRef.current) return;
+    // 计算等比例缩放尺寸
+    const ratio = Math.min(DEFAULT_WIDTH / imageRef.current.naturalWidth, DEFAULT_HEIGHT / imageRef.current.naturalHeight);
+    const displayWidth = imageRef.current.naturalWidth * ratio;
+    const displayHeight = imageRef.current.naturalHeight * ratio;
+
+    // 居中绘制图片
+    const offsetX = (DEFAULT_WIDTH - displayWidth) / 2;
+    const offsetY = (DEFAULT_HEIGHT - displayHeight) / 2;
+
+    ctx.drawImage(imageRef.current, offsetX, offsetY, displayWidth, displayHeight);
+
+    // 保存缩放和偏移信息用于坐标转换
+    canvas.dataset.scale = ratio;
+    canvas.dataset.offsetX = offsetX;
+    canvas.dataset.offsetY = offsetY;
+  }, []);
   // 绘制画布
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = ctxRef.current;
     if (!canvas || !ctx) return;
     const { startPos, currentPos, isDrawing, selectedId, freehandPath } = drawState;
+    reqAniRef.current && cancelAnimationFrame(reqAniRef.current);
     reqAniRef.current = requestAnimationFrame(() => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
       const strokeStyle = '#FF0000';
       const lineWidth = 2;
-
       // 绘制图片
-      if (imageRef.current) {
-        // 计算等比例缩放尺寸
-        const ratio = Math.min(DEFAULT_WIDTH / imageRef.current.naturalWidth, DEFAULT_HEIGHT / imageRef.current.naturalHeight);
-        const displayWidth = imageRef.current.naturalWidth * ratio;
-        const displayHeight = imageRef.current.naturalHeight * ratio;
-
-        // 居中绘制图片
-        const offsetX = (DEFAULT_WIDTH - displayWidth) / 2;
-        const offsetY = (DEFAULT_HEIGHT - displayHeight) / 2;
-
-        ctx.drawImage(imageRef.current, offsetX, offsetY, displayWidth, displayHeight);
-
-        // 保存缩放和偏移信息用于坐标转换
-        canvas.dataset.scale = ratio;
-        canvas.dataset.offsetX = offsetX;
-        canvas.dataset.offsetY = offsetY;
-      }
-
+      drawImage();
       // 绘制已有标注
       annotations.forEach((ann) => {
         switch (ann.type) {
@@ -278,7 +186,8 @@ const ImageAnnotation = ({ src }) => {
             drawArrow(ctx, { ...ann, fromX: ann.x, fromY: ann.y, toX: ann.x + ann.width, toY: ann.y + ann.height }, lineWidth);
             break;
           case 'text':
-            drawText(ctx, ann, textInput);
+            if (textInput.visible && textInput.editId === ann.id) return;
+            drawText(ctx, ann);
             break;
           case 'freehand':
             drawFreehand(ctx, ann, lineWidth);
@@ -346,20 +255,22 @@ const ImageAnnotation = ({ src }) => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
     // 如果正在输入文字，点击外部完成输入
-    if (textInput.show) {
-      if (!textInput.text) {
+    if (textInput.visible) {
+      if (!textInput.editText) {
         startTextInput(x, y);
       } else {
-        finishTextInput();
+        handleTextFinish();
       }
       return;
     }
+
     // 处理文字工具
     if (currentTool === 'text') {
       startTextInput(x, y);
       return;
-    }
+    }  
 
     // 检查是否点击了标注
     const clickedAnnotation = [...annotations].reverse().find((ann) => isInAnnotation(ann, x, y, ctx));
@@ -376,11 +287,16 @@ const ImageAnnotation = ({ src }) => {
   };
 
   const handleDoubleClick = () => {
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    if (!ctx || !canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     const clickedText = annotations.find((a) => a.type === 'text' && isInAnnotation(a, x, y, ctx));
     // 文字进行编辑
     if (clickedText) {
       startTextInput(clickedText.x, clickedText.y, clickedText.id);
-      return;
     }
   };
   const handleContextMenu = () => {
@@ -485,14 +401,6 @@ const ImageAnnotation = ({ src }) => {
     setDrawState({ ...drawState, selectedId: null });
     setStatus('已清除所有标注');
   };
-  // textarea auto focus
-  useEffect(() => {
-    if (textInput.show && textAreaRef.current) {
-      textAreaRef.current.focus();
-      const len = textAreaRef.current.value.length;
-      textAreaRef.current.setSelectionRange(len, len);
-    }
-  }, [textInput.show, textInput.x]);
 
   useEffect(() => {
     const { selectedId, isDragging, isDrawing } = drawState;
@@ -510,8 +418,8 @@ const ImageAnnotation = ({ src }) => {
     if (drawState.selectedId && currentTool !== 'freehand') {
       setDrawState({ ...drawState, selectedId: null });
     }
-    if (textInput.show) {
-      finishTextInput();
+    if (textInput.visible) {
+      handleTextFinish();
     }
   }, [currentTool]);
 
@@ -545,20 +453,7 @@ const ImageAnnotation = ({ src }) => {
           onDoubleClick={handleDoubleClick}
           onContextMenu={handleContextMenu}
         />
-        {textInput.show && (
-          <textarea
-            ref={textAreaRef}
-            className="text-input"
-            style={{
-              left: textInput.x,
-              top: textAreaTop,
-              width: textInput.width,
-              height: textInput.height,
-            }}
-            value={textInput.text}
-            onChange={handleTextChange}
-          />
-        )}
+        {textInput.visible && <TextAnnotationInput {...textInput} annotations={annotations} ctxRef={ctxRef} canvasRef={canvasRef} onFinish={handleTextFinish} onCancel={handleTextCancel} />}
       </div>
       <div className="status">{status}</div>
       <div>

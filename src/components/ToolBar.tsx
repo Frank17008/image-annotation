@@ -10,7 +10,7 @@ interface ToolBarProps {
   historyLength: number;
 }
 
-export const ToolBar: React.FC<ToolBarProps> = (props: ToolBarProps) => {
+const ToolBar: React.FC<ToolBarProps> = (props: ToolBarProps) => {
   const { currentTool, onSelectTool, onClear, onUndo, onDownload, historyLength } = props;
   return (
     <div className="toolbar">
@@ -48,3 +48,5 @@ export const ToolBar: React.FC<ToolBarProps> = (props: ToolBarProps) => {
     </div>
   );
 };
+
+export default ToolBar;

@@ -1,5 +1,4 @@
-export const drawText = (ctx, annotation, textInput) => {
-  if (textInput.show && textInput.editId === annotation.id) return;
+export const drawText = (ctx, annotation) => {  
   ctx.fillStyle = annotation.color;
   ctx.font = '16px Arial';
   // 处理多行文字渲染
