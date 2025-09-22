@@ -1,19 +1,19 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import ToolBar from './ToolBar';
 import TextAnnotationInput from './TextAnnotationInput';
-import { drawArrow, createArrowAnnotation, drawTemporaryArrow } from '../tools/arrow';
+import { drawCircle, drawFreehand, drawRectangle, drawText, drawArrow } from '../tools/drawTool';
 import { drawControlPoint, getBoundingBox } from '../tools/common';
-import { drawCircle, createCircleAnnotation, drawTemporaryCircle } from '../tools/circle';
-import { drawFreehand, createFreehandAnnotation, drawTemporaryFreehand } from '../tools/freehand';
-import { drawRectangle, createRectangleAnnotation, drawTemporaryRectangle } from '../tools/rectangle';
-import { drawText } from '../tools/text';
-import { isInAnnotation, throttle } from '../utils/canvasUtils';
+import { isInAnnotation, throttle, getCanvasPoint } from '../utils/canvasUtils';
 import './ImageAnnotation.css';
 
 // 设置canvas默认尺寸
 const DEFAULT_WIDTH = 800;
 const DEFAULT_HEIGHT = 600;
 const ImageAnnotation = ({ src }) => {
+  // 稳定ID生成器，避免删除后重复
+  const idRef = useRef(0);
+  const nextId = useCallback(() => `${Date.now()}-${idRef.current++}`, []);
+
   const [drawState, setDrawState] = useState({
     isDrawing: false, // 是否正在绘制标注
     isDragging: false, // 是否正在拖动标注
@@ -32,6 +32,14 @@ const ImageAnnotation = ({ src }) => {
   const reqAniRef = useRef(null);
   const ctxRef = useRef(null);
 
+  // 深拷贝注解，防止历史记录被后续变更污染
+  const cloneAnnotation = useCallback((ann) => {
+    if (ann?.type === 'freehand' && Array.isArray(ann.points)) {
+      return { ...ann, points: ann.points.map((p) => ({ x: p.x, y: p.y })) };
+    }
+    return { ...ann };
+  }, []);
+
   const download = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -44,9 +52,9 @@ const ImageAnnotation = ({ src }) => {
   };
 
   // 保存历史记录
-  const saveHistory = () => {
-    setHistory((prev) => [...prev, [...annotations]]);
-  };
+  const saveHistory = useCallback(() => {
+    setHistory((prev) => [...prev, annotations.map(cloneAnnotation)]);
+  }, [annotations, cloneAnnotation]);
 
   // 回退上一步
   const undo = () => {
@@ -211,9 +219,7 @@ const ImageAnnotation = ({ src }) => {
     const ctx = ctxRef.current;
     if (!canvas || !ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = getCanvasPoint(e, canvas);
 
     const isOnTextAnnotation = annotations.filter((ann) => ann.type === 'text').some((ann) => isInAnnotation(ann, x, y, ctx));
     // 文字处理
@@ -223,7 +229,7 @@ const ImageAnnotation = ({ src }) => {
         if (text.visible) {
           // 点击在空白区域，保存文字
           if (text.value && text.value.trim()) {
-            const id = text.id || `${Date.now()}`;
+            const id = text.id || nextId();
             setAnnotations((prev) => [...prev, { id, type: 'text', x: text.position.x, y: text.position.y + 16, text: text.value, color: '#FF0000' }]);
             textAreaRef.current.setText({ ...text, id, visible: false });
             saveHistory();
@@ -260,9 +266,7 @@ const ImageAnnotation = ({ src }) => {
     const canvas = canvasRef.current;
     const ctx = ctxRef.current;
     if (!ctx || !canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = getCanvasPoint(e, canvas);
     const clickedText = annotations.find((a) => a.type === 'text' && isInAnnotation(a, x, y, ctx));
     // 文字进行编辑
     if (clickedText) {
@@ -282,9 +286,7 @@ const ImageAnnotation = ({ src }) => {
       const ctx = ctxRef.current;
       if (!canvas || !ctx) return;
       const { startPos, currentPos, isDragging, isDrawing, selectedId, freehandPath } = drawState;
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const { x, y } = getCanvasPoint(e, canvas);
 
       // 检查是否在任意标注上
       const isOnAnnotation = annotations.some((ann) => isInAnnotation(ann, x, y, ctx));
@@ -345,7 +347,7 @@ const ImageAnnotation = ({ src }) => {
       const points = currentTool === 'freehand' ? { points: [...freehandPath] } : {};
       const radius = currentTool === 'circle' ? { radius: Math.sqrt(width ** 2 + height ** 2) } : {};
       const newAnnotation = {
-        id: `${annotations.length + 1}`,
+        id: nextId(),
         type: currentTool,
         x: startPos.x,
         y: startPos.y,

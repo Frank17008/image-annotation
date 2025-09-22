@@ -1,3 +1,22 @@
+// 文本绘制/测量的统一常量
+export const TEXT_FONT = '16px Arial';
+export const TEXT_LINE_HEIGHT = 20;
+
+export const measureMultilineText = (ctx, text) => {
+  ctx.font = TEXT_FONT;
+  const lines = text.split('\n');
+  let maxWidth = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const metrics = ctx.measureText(lines[i]);
+    maxWidth = Math.max(maxWidth, metrics.width);
+  }
+  return { width: maxWidth, height: lines.length * TEXT_LINE_HEIGHT };
+};
+
+export const getCanvasPoint = (e, canvas) => {
+  const rect = canvas.getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+};
 
 // 获取标注的外接矩形
 export const getBoundingBox = (ann, ctx) => {
@@ -28,20 +47,10 @@ export const getBoundingBox = (ann, ctx) => {
       height: maxY - minY,
     };
   } else if (ann.type === 'text') {
-    ctx.font = '16px Arial';
-    const lines = ann.text.split('\n');
-    const lineHeight = 20; // 行高
-    const totalHeight = lines.length * lineHeight;
-
-    // 计算最长行的宽度
-    let maxWidth = 0;
-    lines.forEach((line) => {
-      const metrics = ctx.measureText(line);
-      maxWidth = Math.max(maxWidth, metrics.width);
-    });
+    const { width: maxWidth, height: totalHeight } = measureMultilineText(ctx, ann.text);
     return {
       x: ann.x,
-      y: ann.y - lineHeight,
+      y: ann.y - TEXT_LINE_HEIGHT,
       width: maxWidth,
       height: totalHeight,
     };
@@ -124,14 +133,13 @@ export const isInAnnotation = (ann, x, y, ctx) => {
   return false;
 };
 
-
 export function throttle(func, delay) {
-    let lastCall = 0;
-    return function(...args) {
-        const now = new Date().getTime();
-        if (now - lastCall >= delay) {
-            func.apply(this, args);
-            lastCall = now;
-        }
-    };
+  let lastCall = 0;
+  return function (...args) {
+    const now = new Date().getTime();
+    if (now - lastCall >= delay) {
+      func.apply(this, args);
+      lastCall = now;
+    }
+  };
 }

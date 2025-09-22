@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, memo, useImperativeHandle, forwardRef } from 'react';
+import { TEXT_FONT, TEXT_LINE_HEIGHT } from '../utils/canvasUtils';
 import './ImageAnnotation.css';
 
 const DEFAULT_WIDTH = 200;
@@ -20,14 +21,14 @@ const TextAnnotationInput = forwardRef((props, ref) => {
   // 初始化文本和尺寸
   const initTextDimensions = useCallback(() => {
     if (!ctxRef.current || !canvasRef.current) return;
-    ctxRef.current.font = '16px Arial';
+    ctxRef.current.font = TEXT_FONT;
     let width = DEFAULT_WIDTH;
     let height = DEFAULT_HEIGHT;
     if (text.id) {
       const annotation = annotations.find((a) => a.id === text.id);
       if (annotation?.text) {
         const lines = annotation.text.split('\n');
-        height = Math.max(DEFAULT_HEIGHT, lines.length * 20);
+        height = Math.max(DEFAULT_HEIGHT, lines.length * TEXT_LINE_HEIGHT);
         width = Math.max(DEFAULT_WIDTH, ...lines.map((line) => ctxRef.current.measureText(line).width)) + 10;
       }
     }
@@ -50,7 +51,7 @@ const TextAnnotationInput = forwardRef((props, ref) => {
       lines.forEach((line) => {
         const metrics = ctxRef.current.measureText(line);
         maxLineWidth = Math.max(maxLineWidth, metrics.width);
-        totalHeight += 20;
+        totalHeight += TEXT_LINE_HEIGHT;
       });
 
       setText((prev) => ({
@@ -63,23 +64,18 @@ const TextAnnotationInput = forwardRef((props, ref) => {
     [ctxRef, canvasRef]
   );
 
-  const handleKeyDown = useCallback(
-    (e) => {
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter' && e.shiftKey) return;
+    if (e.key === 'Escape') {
       e.preventDefault();
-      if (e.key === 'Enter' && e.shiftKey) return;
-      if (e.key === 'Escape') {
-        setText({ ...text, visible: false, value: '' });
-      } else if (e.key === 'Enter') {
-        // Enter键完成输入
-        if (text.value.trim()) {
-          setText({ ...text, visible: false });
-        } else {
-          setText({ ...text, visible: false, value: '' });
-        }
-      }
-    },
-    [text]
-  );
+      setText((prev) => ({ ...prev, visible: false, value: '' }));
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setText((prev) => ({ ...prev, visible: false, value: prev.value.trim() ? prev.value : '' }));
+    }
+  }, []);
 
   useImperativeHandle(ref, () => ({
     getText: () => text,
@@ -121,14 +117,6 @@ const TextAnnotationInput = forwardRef((props, ref) => {
           }}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          // onBlur={() => {
-          //   // 失去焦点时保存文字
-          //   if (text.visible && text.value.trim()) {
-          //     setText({ ...text, visible: false });
-          //   } else if (text.visible) {
-          //     setText({ ...text, visible: false, value: '' });
-          //   }
-          // }}
         />
       ) : null}
     </>
