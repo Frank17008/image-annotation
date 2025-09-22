@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import ToolBar from './ToolBar';
 import TextAnnotationInput from './TextAnnotationInput';
 import { drawArrow, createArrowAnnotation, drawTemporaryArrow } from '../tools/arrow';
@@ -214,28 +214,32 @@ const ImageAnnotation = ({ src }) => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
     const isOnTextAnnotation = annotations.filter((ann) => ann.type === 'text').some((ann) => isInAnnotation(ann, x, y, ctx));
     // 文字处理
-    if (currentTool === 'text' && !isOnTextAnnotation) {
+    if (!isOnTextAnnotation) {
       const text = textAreaRef.current.getText();
-      // 如果已经有可见的文字输入框
-      if (text.visible) {
-        // 点击在空白区域，保存文字
-        if (text.value && text.value.trim()) {
-          const id = text.id || `${Date.now()}`;
-          setAnnotations((prev) => [...prev, { id, type: 'text', x: text.position.x, y: text.position.y + 16, text: text.value, color: '#FF0000' }]);
-          textAreaRef.current.setText({ ...text, id, visible: false });
-          saveHistory();
-          setStatus(`已添加文字标注: ${text.value}`);
+      if (currentTool === 'text') {
+        if (text.visible) {
+          // 点击在空白区域，保存文字
+          if (text.value && text.value.trim()) {
+            const id = text.id || `${Date.now()}`;
+            setAnnotations((prev) => [...prev, { id, type: 'text', x: text.position.x, y: text.position.y + 16, text: text.value, color: '#FF0000' }]);
+            textAreaRef.current.setText({ ...text, id, visible: false });
+            saveHistory();
+            setStatus(`已添加文字标注: ${text.value}`);
+          } else {
+            // 更新position
+            textAreaRef.current.setText({ ...text, position: { x, y } });
+          }
         } else {
-          // 如果没有输入文字，则取消输入
-          textAreaRef.current.setText({ ...text, position: { x, y } });
+          // 显示文字输入框
+          textAreaRef.current.setText({ ...text, id: null, value: '', position: { x, y }, visible: true });
         }
+        return;
       } else {
-        // 显示文字输入框
-        textAreaRef.current.setText({ ...text, id: null, value: '', position: { x, y }, visible: true });
+        text.visible && textAreaRef.current.setText({ ...text, visible: false });
       }
-      return;
     }
 
     // 检查是否点击了标注
