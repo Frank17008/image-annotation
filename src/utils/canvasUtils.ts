@@ -1,8 +1,9 @@
-// 文本绘制/测量的统一常量
-export const TEXT_FONT = '16px Arial';
-export const TEXT_LINE_HEIGHT = 20;
+import type { Annotation } from '../types/annotations';
 
-export const measureMultilineText = (ctx, text) => {
+export const TEXT_FONT: string = '16px Arial';
+export const TEXT_LINE_HEIGHT: number = 20;
+
+export const measureMultilineText = (ctx: CanvasRenderingContext2D, text: string) => {
   ctx.font = TEXT_FONT;
   const lines = text.split('\n');
   let maxWidth = 0;
@@ -13,13 +14,12 @@ export const measureMultilineText = (ctx, text) => {
   return { width: maxWidth, height: lines.length * TEXT_LINE_HEIGHT };
 };
 
-export const getCanvasPoint = (e, canvas) => {
+export const getCanvasPoint = (e: MouseEvent, canvas: HTMLCanvasElement) => {
   const rect = canvas.getBoundingClientRect();
   return { x: e.clientX - rect.left, y: e.clientY - rect.top };
 };
 
-// 获取标注的外接矩形
-export const getBoundingBox = (ann, ctx) => {
+export const getBoundingBox = (ann: Annotation, ctx: CanvasRenderingContext2D) => {
   if (ann.type === 'rectangle') {
     return {
       x: ann.x,
@@ -35,7 +35,6 @@ export const getBoundingBox = (ann, ctx) => {
       height: ann.radius * 2,
     };
   } else if (ann.type === 'arrow') {
-    // 计算箭头的外接矩形
     const minX = Math.min(ann.x, ann.x + ann.width);
     const minY = Math.min(ann.y, ann.y + ann.height);
     const maxX = Math.max(ann.x, ann.x + ann.width);
@@ -58,8 +57,7 @@ export const getBoundingBox = (ann, ctx) => {
   return { x: 0, y: 0, width: 0, height: 0 };
 };
 
-// 检测点击是否在控制点上
-export const isInControlPoint = (ann, x, y, ctx) => {
+export const isInControlPoint = (ann: Annotation, x: number, y: number, ctx: CanvasRenderingContext2D) => {
   if (ann.type === 'freehand') return false;
   const boundingBox = getBoundingBox(ann, ctx);
   return (
@@ -70,9 +68,7 @@ export const isInControlPoint = (ann, x, y, ctx) => {
   );
 };
 
-// 检测点是否在线段附近
-export const isPointNearLine = (x, y, x1, y1, x2, y2, threshold = 6) => {
-  // 计算点到线段的最短距离
+export const isPointNearLine = (x: number, y: number, x1: number, y1: number, x2: number, y2: number, threshold: number = 6) => {
   const A = x - x1;
   const B = y - y1;
   const C = x2 - x1;
@@ -81,7 +77,7 @@ export const isPointNearLine = (x, y, x1, y1, x2, y2, threshold = 6) => {
   const len_sq = C * C + D * D;
   let param = -1;
   if (len_sq !== 0) param = dot / len_sq;
-  let xx, yy;
+  let xx: number, yy: number;
   if (param < 0) {
     xx = x1;
     yy = y1;
@@ -97,30 +93,24 @@ export const isPointNearLine = (x, y, x1, y1, x2, y2, threshold = 6) => {
   return Math.sqrt(dx * dx + dy * dy) < threshold;
 };
 
-// 检测点击是否在标注上
-export const isInAnnotation = (ann, x, y, ctx) => {
+export const isInAnnotation = (ann: Annotation, x: number, y: number, ctx: CanvasRenderingContext2D) => {
   if (ann.type === 'rectangle') {
-    // 判断点是否在矩形边框上
-    const lineWidth = 2; // 匹配绘制时的线宽
+    const lineWidth = 2;
     return (
-      (Math.abs(x - ann.x) <= lineWidth && y >= ann.y && y <= ann.y + ann.height) || // 左边线
-      (Math.abs(x - (ann.x + ann.width)) <= lineWidth && y >= ann.y && y <= ann.y + ann.height) || // 右边线
-      (Math.abs(y - ann.y) <= lineWidth && x >= ann.x && x <= ann.x + ann.width) || // 上边线
-      (Math.abs(y - (ann.y + ann.height)) <= lineWidth && x >= ann.x && x <= ann.x + ann.width) // 下边线
+      (Math.abs(x - ann.x) <= lineWidth && y >= ann.y && y <= ann.y + ann.height) ||
+      (Math.abs(x - (ann.x + ann.width)) <= lineWidth && y >= ann.y && y <= ann.y + ann.height) ||
+      (Math.abs(y - ann.y) <= lineWidth && x >= ann.x && x <= ann.x + ann.width) ||
+      (Math.abs(y - (ann.y + ann.height)) <= lineWidth && x >= ann.x && x <= ann.x + ann.width)
     );
   } else if (ann.type === 'circle') {
-    // 判断点是否在圆周上（考虑线宽）
     const distance = Math.sqrt((x - ann.x) ** 2 + (y - ann.y) ** 2);
-    return Math.abs(distance - ann.radius) <= 2; // 2px误差范围
+    return Math.abs(distance - ann.radius) <= 2;
   } else if (ann.type === 'arrow') {
-    // 使用原有的线段判断方法
     return isPointNearLine(x, y, ann.x, ann.y, ann.x + ann.width, ann.y + ann.height);
   } else if (ann.type === 'text') {
-    // 文字保持原有判断方式
     const boundingBox = getBoundingBox(ann, ctx);
     return x >= boundingBox.x && x <= boundingBox.x + boundingBox.width && y >= boundingBox.y && y <= boundingBox.y + boundingBox.height;
   } else if (ann.type === 'freehand') {
-    // 自由绘制路径检测
     for (let i = 0; i < ann.points.length - 1; i++) {
       const p1 = ann.points[i];
       const p2 = ann.points[i + 1];
@@ -133,9 +123,9 @@ export const isInAnnotation = (ann, x, y, ctx) => {
   return false;
 };
 
-export function throttle(func, delay) {
+export function throttle(func: (...args: any[]) => any, delay: number) {
   let lastCall = 0;
-  return function (...args) {
+  return function (this: any, ...args: any[]) {
     const now = new Date().getTime();
     if (now - lastCall >= delay) {
       func.apply(this, args);

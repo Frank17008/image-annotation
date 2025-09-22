@@ -1,5 +1,6 @@
-// 绘制箭头标注
-export const drawArrow = (ctx, annotation, lineWidth) => {
+import type { ArrowDrawingPayload, CircleAnnotation, FreehandAnnotation, RectangleAnnotation, TextAnnotation } from '../types/annotations';
+
+export const drawArrow = (ctx: CanvasRenderingContext2D, annotation: ArrowDrawingPayload, lineWidth: number): void => {
   const { fromX, fromY, toX, toY, color } = annotation;
   if (Math.abs(toX - fromX) < 5 && Math.abs(toY - fromY) < 5) return;
   const headLength = 15;
@@ -7,13 +8,11 @@ export const drawArrow = (ctx, annotation, lineWidth) => {
   ctx.strokeStyle = color;
   ctx.lineWidth = lineWidth;
 
-  // 箭杆
   ctx.beginPath();
   ctx.moveTo(fromX, fromY);
   ctx.lineTo(toX, toY);
   ctx.stroke();
 
-  // 箭头
   ctx.beginPath();
   ctx.moveTo(toX, toY);
   ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6));
@@ -22,8 +21,7 @@ export const drawArrow = (ctx, annotation, lineWidth) => {
   ctx.stroke();
 };
 
-// 绘制圆形
-export const drawCircle = (ctx, annotation, lineWidth) => {
+export const drawCircle = (ctx: CanvasRenderingContext2D, annotation: CircleAnnotation, lineWidth: number): void => {
   ctx.strokeStyle = annotation.color;
   ctx.lineWidth = lineWidth;
   ctx.beginPath();
@@ -31,7 +29,8 @@ export const drawCircle = (ctx, annotation, lineWidth) => {
   ctx.stroke();
 };
 
-export const drawFreehand = (ctx, annotation, lineWidth) => {
+export const drawFreehand = (ctx: CanvasRenderingContext2D, annotation: FreehandAnnotation, lineWidth: number): void => {
+  if (!annotation.points.length) return;
   ctx.strokeStyle = annotation.color;
   ctx.lineWidth = lineWidth;
   ctx.beginPath();
@@ -42,20 +41,19 @@ export const drawFreehand = (ctx, annotation, lineWidth) => {
   ctx.stroke();
 };
 
-export const drawRectangle = (ctx, annotation, lineWidth) => {
+export const drawRectangle = (ctx: CanvasRenderingContext2D, annotation: RectangleAnnotation, lineWidth: number): void => {
   ctx.strokeStyle = annotation.color;
   ctx.lineWidth = lineWidth;
   ctx.strokeRect(annotation.x, annotation.y, annotation.width, annotation.height);
 };
 
-export const drawText = (ctx, annotation) => {
+export const drawText = (ctx: CanvasRenderingContext2D, annotation: TextAnnotation): void => {
   ctx.fillStyle = annotation.color;
   ctx.font = '16px Arial';
-  // 处理多行文字渲染
   const lines = annotation.text.split('\n');
   let yPos = annotation.y;
-  lines.forEach((line) => {
-    ctx.fillText(line, annotation.x, yPos);
-    yPos += 20; // 行间距
-  });
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], annotation.x, yPos);
+    yPos += 20;
+  }
 };
