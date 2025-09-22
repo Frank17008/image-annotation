@@ -214,17 +214,18 @@ const ImageAnnotation = ({ src }) => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-
+    const isOnTextAnnotation = annotations.filter((ann) => ann.type === 'text').some((ann) => isInAnnotation(ann, x, y, ctx));
     // 文字处理
-    if (currentTool === 'text') {
+    if (currentTool === 'text' && !isOnTextAnnotation) {
       const text = textAreaRef.current.getText();
       // 如果已经有可见的文字输入框
       if (text.visible) {
         // 点击在空白区域，保存文字
         if (text.value && text.value.trim()) {
-          textAreaRef.current.setText({ ...text, visible: false });
+          const id = text.id || `${Date.now()}`;
+          setAnnotations((prev) => [...prev, { id, type: 'text', x: text.position.x, y: text.position.y + 16, text: text.value, color: '#FF0000' }]);
+          textAreaRef.current.setText({ ...text, id, visible: false });
           saveHistory();
-          setAnnotations((prev) => [...prev, { id: `${Date.now()}`, type: 'text', x: text.position.x, y: text.position.y + 16, text: text.value, color: '#FF0000' }]);
           setStatus(`已添加文字标注: ${text.value}`);
         } else {
           // 如果没有输入文字，则取消输入
@@ -276,7 +277,6 @@ const ImageAnnotation = ({ src }) => {
       const canvas = canvasRef.current;
       const ctx = ctxRef.current;
       if (!canvas || !ctx) return;
-
       const { startPos, currentPos, isDragging, isDrawing, selectedId, freehandPath } = drawState;
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -290,7 +290,6 @@ const ImageAnnotation = ({ src }) => {
       if (isDragging && selectedId) {
         const dx = x - currentPos.x;
         const dy = y - currentPos.y;
-
         setAnnotations((prev) =>
           prev.map((ann) => {
             if (ann.id === selectedId) {
@@ -337,7 +336,7 @@ const ImageAnnotation = ({ src }) => {
     const width = currentPos.x - startPos.x;
     const height = currentPos.y - startPos.y;
     // 只有距离足够时才添加
-    if (Math.abs(width) > 3 || Math.abs(height) > 3) {
+    if (['rectangle', 'circle', 'arrow', 'freehand'].includes(currentTool) && (Math.abs(width) > 3 || Math.abs(height) > 3)) {
       saveHistory();
       const points = currentTool === 'freehand' ? { points: [...freehandPath] } : {};
       const radius = currentTool === 'circle' ? { radius: Math.sqrt(width ** 2 + height ** 2) } : {};
@@ -423,7 +422,7 @@ const ImageAnnotation = ({ src }) => {
           onMouseDown={handleMouseDown}
           onMouseMove={throttledMouseMove}
           onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
+          // onMouseLeave={handleMouseUp}
           onDoubleClick={handleDoubleClick}
           onContextMenu={handleContextMenu}
         />

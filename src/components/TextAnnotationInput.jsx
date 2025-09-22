@@ -65,6 +65,7 @@ const TextAnnotationInput = forwardRef((props, ref) => {
 
   const handleKeyDown = useCallback(
     (e) => {
+      e.preventDefault();
       if (e.key === 'Enter' && e.shiftKey) return;
       if (e.key === 'Escape') {
         setText({ ...text, visible: false, value: '' });
@@ -75,7 +76,6 @@ const TextAnnotationInput = forwardRef((props, ref) => {
         } else {
           setText({ ...text, visible: false, value: '' });
         }
-        e.preventDefault();
       }
     },
     [text]
