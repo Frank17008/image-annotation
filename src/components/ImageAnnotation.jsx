@@ -25,12 +25,6 @@ const ImageAnnotation = ({ src }) => {
   const [annotations, setAnnotations] = useState([]);
   const [history, setHistory] = useState([]);
   const [currentTool, setCurrentTool] = useState(null);
-  const [textInput, setTextInput] = useState({
-    visible: false,
-    initialPosition: { x: 0, y: 0 }, // 初始位置
-    editText: '',
-    editId: null, // 正在编辑的标注ID
-  });
   const [status, setStatus] = useState('请选择工具开始标注');
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
@@ -47,42 +41,6 @@ const ImageAnnotation = ({ src }) => {
     a.download = 'annotated_image.png';
     a.click();
     a.remove();
-  };
-
-  // 开始文字输入
-  const startTextInput = (x, y, editId = null) => {
-    if (editId) {
-      const annotation = annotations.find((a) => a.id === editId);
-      setTextInput({
-        visible: true,
-        initialPosition: { x, y },
-        editText: annotation ? annotation.text : '',
-        editId,
-      });
-    } else {
-      setTextInput({
-        visible: true,
-        initialPosition: { x, y },
-        editText: '',
-        editId: null,
-      });
-    }
-  };
-  // 完成文字输入
-  const handleTextFinish = ({ text, editId, x, y }) => {
-    if (editId) {
-      setAnnotations((prev) => prev.map((ann) => (ann.id === editId ? { ...ann, text, x, y } : ann)));
-      setStatus(`已更新文字标注: ${text}`);
-    } else {
-      saveHistory();
-      setAnnotations((prev) => [...prev, { id: `${prev.length + 1}`, type: 'text', x, y, text, color: '#FF0000' }]);
-      setStatus(`已添加文字标注: ${text}`);
-    }
-    setTextInput({ ...textInput, visible: false });
-  };
-  // 取消文字输入
-  const handleTextCancel = () => {
-    setTextInput({ ...textInput, visible: false });
   };
 
   // 保存历史记录
@@ -186,7 +144,8 @@ const ImageAnnotation = ({ src }) => {
             drawArrow(ctx, { ...ann, fromX: ann.x, fromY: ann.y, toX: ann.x + ann.width, toY: ann.y + ann.height }, lineWidth);
             break;
           case 'text':
-            if (textInput.visible && textInput.editId === ann.id) return;
+            const text = textAreaRef.current.getText();
+            if (text.visible && text.id === ann.id) return;
             drawText(ctx, ann);
             break;
           case 'freehand':
@@ -256,21 +215,27 @@ const ImageAnnotation = ({ src }) => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // 如果正在输入文字，点击外部完成输入
-    if (textInput.visible) {
-      if (!textInput.editText) {
-        startTextInput(x, y);
+    // 文字处理
+    if (currentTool === 'text') {
+      const text = textAreaRef.current.getText();
+      // 如果已经有可见的文字输入框
+      if (text.visible) {
+        // 点击在空白区域，保存文字
+        if (text.value && text.value.trim()) {
+          textAreaRef.current.setText({ ...text, visible: false });
+          saveHistory();
+          setAnnotations((prev) => [...prev, { id: `${Date.now()}`, type: 'text', x: text.position.x, y: text.position.y + 16, text: text.value, color: '#FF0000' }]);
+          setStatus(`已添加文字标注: ${text.value}`);
+        } else {
+          // 如果没有输入文字，则取消输入
+          textAreaRef.current.setText({ ...text, position: { x, y } });
+        }
       } else {
-        handleTextFinish();
+        // 显示文字输入框
+        textAreaRef.current.setText({ ...text, id: null, value: '', position: { x, y }, visible: true });
       }
       return;
     }
-
-    // 处理文字工具
-    if (currentTool === 'text') {
-      startTextInput(x, y);
-      return;
-    }  
 
     // 检查是否点击了标注
     const clickedAnnotation = [...annotations].reverse().find((ann) => isInAnnotation(ann, x, y, ctx));
@@ -286,7 +251,7 @@ const ImageAnnotation = ({ src }) => {
     setStatus(`正在绘制 ${currentTool} (起点: ${x.toFixed(0)}, ${y.toFixed(0)})`);
   };
 
-  const handleDoubleClick = () => {
+  const handleDoubleClick = (e) => {
     const canvas = canvasRef.current;
     const ctx = ctxRef.current;
     if (!ctx || !canvas) return;
@@ -296,7 +261,8 @@ const ImageAnnotation = ({ src }) => {
     const clickedText = annotations.find((a) => a.type === 'text' && isInAnnotation(a, x, y, ctx));
     // 文字进行编辑
     if (clickedText) {
-      startTextInput(clickedText.x, clickedText.y, clickedText.id);
+      const text = textAreaRef.current.getText();
+      textAreaRef.current.setText({ ...text, id: clickedText.id, value: clickedText.text, position: { x: clickedText.x, y: clickedText.y - 16 }, visible: true });
     }
   };
   const handleContextMenu = () => {
@@ -418,18 +384,26 @@ const ImageAnnotation = ({ src }) => {
     if (drawState.selectedId && currentTool !== 'freehand') {
       setDrawState({ ...drawState, selectedId: null });
     }
-    if (textInput.visible) {
-      handleTextFinish();
-    }
   }, [currentTool]);
 
   // 键盘事件处理
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // 如果当前处于文字输入模式且输入框可见，不处理键盘事件
+      const text = textAreaRef.current?.getText();
+      if (currentTool === 'text' && text?.visible) {
+        return;
+      }
+
       if (e.key === 'Delete') {
         deleteSelected();
       } else if (e.ctrlKey && e.key === 'z') {
         undo();
+      } else if (e.key === 'Escape') {
+        // ESC键取消文字输入
+        if (currentTool === 'text' && text?.visible) {
+          textAreaRef.current.setText({ ...text, visible: false });
+        }
       }
     };
 
@@ -438,7 +412,7 @@ const ImageAnnotation = ({ src }) => {
       window.removeEventListener('keydown', handleKeyDown);
       reqAniRef.current && cancelAnimationFrame(reqAniRef.current);
     };
-  }, [deleteSelected, undo]);
+  }, [deleteSelected, undo, currentTool]);
 
   return (
     <div>
@@ -453,7 +427,7 @@ const ImageAnnotation = ({ src }) => {
           onDoubleClick={handleDoubleClick}
           onContextMenu={handleContextMenu}
         />
-        {textInput.visible && <TextAnnotationInput {...textInput} annotations={annotations} ctxRef={ctxRef} canvasRef={canvasRef} onFinish={handleTextFinish} onCancel={handleTextCancel} />}
+        <TextAnnotationInput ref={textAreaRef} annotations={annotations} ctxRef={ctxRef} canvasRef={canvasRef} />
       </div>
       <div className="status">{status}</div>
       <div>

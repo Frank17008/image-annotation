@@ -1,19 +1,21 @@
-import { useState, useRef, useEffect, useCallback, memo } from 'react';
+import { useState, useRef, useEffect, useCallback, memo, useImperativeHandle, forwardRef } from 'react';
 import './ImageAnnotation.css';
 
 const DEFAULT_WIDTH = 200;
 const DEFAULT_HEIGHT = 24;
 
-const TextAnnotationInput = ({ initialPosition = { x: 0, y: 0 }, editText = '', editId = null, annotations, ctxRef, canvasRef, onFinish, onCancel }) => {
-
-  const [text, setText] = useState(editText);
-  const [dimensions, setDimensions] = useState({
-    x: initialPosition.x,
-    y: initialPosition.y,
+const TextAnnotationInput = forwardRef((props, ref) => {
+  const { annotations, ctxRef, canvasRef } = props;
+  const [text, setText] = useState({
+    visible: false,
+    position: { x: 0, y: 0 }, // 初始位置
+    value: '',
+    id: null, // 正在编辑的标注ID
     width: DEFAULT_WIDTH,
     height: DEFAULT_HEIGHT,
   });
   const textAreaRef = useRef(null);
+  const focusTimer = useRef(null);
 
   // 初始化文本和尺寸
   const initTextDimensions = useCallback(() => {
@@ -21,8 +23,8 @@ const TextAnnotationInput = ({ initialPosition = { x: 0, y: 0 }, editText = '', 
     ctxRef.current.font = '16px Arial';
     let width = DEFAULT_WIDTH;
     let height = DEFAULT_HEIGHT;
-    if (editId) {
-      const annotation = annotations.find((a) => a.id === editId);
+    if (text.id) {
+      const annotation = annotations.find((a) => a.id === text.id);
       if (annotation?.text) {
         const lines = annotation.text.split('\n');
         height = Math.max(DEFAULT_HEIGHT, lines.length * 20);
@@ -31,23 +33,15 @@ const TextAnnotationInput = ({ initialPosition = { x: 0, y: 0 }, editText = '', 
     }
 
     // 确保位置在合理范围内
-    const x = Math.max(0, Math.min(initialPosition.x, canvasRef.current.width - width));
-    const y = Math.max(16, Math.min(initialPosition.y, canvasRef.current.height - height));
-    setDimensions({
-      x,
-      y,
-      width,
-      height,
-    });
-  }, [editId, initialPosition, annotations, ctxRef, canvasRef]);
+    const x = Math.max(0, Math.min(text.position.x, canvasRef.current.width - width));
+    const y = Math.max(16, Math.min(text.position.y, canvasRef.current.height - height));
+    setText({ ...text, position: { x, y }, width, height });
+  }, [text, annotations, ctxRef, canvasRef]);
 
   const handleChange = useCallback(
     (e) => {
       if (!ctxRef.current || !canvasRef.current) return;
-
       const input = e.target.value;
-      setText(input);
-
       // 计算文本尺寸
       const lines = input.split('\n');
       let totalHeight = 0;
@@ -59,61 +53,86 @@ const TextAnnotationInput = ({ initialPosition = { x: 0, y: 0 }, editText = '', 
         totalHeight += 20;
       });
 
-      setDimensions((prev) => ({
+      setText((prev) => ({
         ...prev,
+        value: input,
         width: maxLineWidth + 10,
-        height: Math.min(totalHeight, canvasRef.current.height - prev.y - 10),
+        height: Math.min(totalHeight, canvasRef.current.height - prev.position.y - 10),
       }));
     },
     [ctxRef, canvasRef]
   );
 
-  const handleSave = useCallback(() => {
-    if (text.trim()) {
-      onFinish({ text, editId, ...dimensions });
-    } else {
-      onCancel?.();
-    }
-  }, [text, editId, dimensions, onFinish, onCancel]);
-
   const handleKeyDown = useCallback(
     (e) => {
       if (e.key === 'Enter' && e.shiftKey) return;
       if (e.key === 'Escape') {
-        onCancel?.();
+        setText({ ...text, visible: false, value: '' });
       } else if (e.key === 'Enter') {
-        handleSave();
+        // Enter键完成输入
+        if (text.value.trim()) {
+          setText({ ...text, visible: false });
+        } else {
+          setText({ ...text, visible: false, value: '' });
+        }
+        e.preventDefault();
       }
     },
-    [handleSave, onCancel]
+    [text]
   );
 
-  useEffect(() => {    
-    if (textAreaRef.current) {
-      textAreaRef.current.focus();
-      const len = textAreaRef.current.value.length;
-      textAreaRef.current.setSelectionRange(len, len);
-      initTextDimensions();
-      console.log('TextAnnotationInpu:', dimensions);
+  useImperativeHandle(ref, () => ({
+    getText: () => text,
+    setText,
+  }));
+
+  useEffect(() => {
+    if (!text.visible) return;
+    initTextDimensions();
+  }, [text.visible, text.id]);
+
+  useEffect(() => {
+    if (textAreaRef.current && text.visible) {
+      focusTimer.current && clearTimeout(focusTimer.current);
+      focusTimer.current = setTimeout(() => {
+        textAreaRef.current.focus();
+        // const len = textAreaRef.current.value.length;
+        // textAreaRef.current.setSelectionRange(len, len);
+      }, 200);
     }
-  }, []);
+    return () => {
+      focusTimer.current && clearTimeout(focusTimer.current);
+    };
+  }, [text.position, text.visible]);
 
   return (
-    <textarea
-      ref={textAreaRef}
-      className="text-input"
-      style={{
-        left: dimensions.x,
-        top: dimensions.y,
-        width: dimensions.width,
-        height: dimensions.height,
-      }}
-      value={text}
-      onChange={handleChange}
-      onBlur={handleSave}
-      onKeyDown={handleKeyDown}
-    />
+    <>
+      {text.visible ? (
+        <textarea
+          id="textInput"
+          ref={textAreaRef}
+          className="text-input"
+          value={text.value}
+          style={{
+            left: text.position.x,
+            top: text.position.y,
+            width: text.width,
+            height: text.height,
+          }}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          // onBlur={() => {
+          //   // 失去焦点时保存文字
+          //   if (text.visible && text.value.trim()) {
+          //     setText({ ...text, visible: false });
+          //   } else if (text.visible) {
+          //     setText({ ...text, visible: false, value: '' });
+          //   }
+          // }}
+        />
+      ) : null}
+    </>
   );
-};
+});
 
 export default memo(TextAnnotationInput);
