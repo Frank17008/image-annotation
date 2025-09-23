@@ -1,9 +1,10 @@
 import React from 'react';
 import './ToolBar.css';
+import { ToolType } from '../types/annotations';
 
 interface ToolBarProps {
   currentTool: string | null;
-  onSelectTool: (tool: string) => void;
+  onSelectTool: (tool: ToolType) => void;
   onClear: () => void;
   onUndo: () => void;
   onExport: () => void;

@@ -1,26 +1,39 @@
 import { useState, useRef, useEffect, useCallback, memo, useMemo, useImperativeHandle, forwardRef } from 'react';
+import type { Annotation, TextInputState } from '../types/annotations';
 import { TEXT_FONT, TEXT_LINE_HEIGHT } from '../utils/canvasUtils';
 import './ImageAnnotation.css';
 
 const DEFAULT_WIDTH = 200;
 const DEFAULT_HEIGHT = 24;
 
-const TextAnnotationInput = forwardRef((props, ref) => {
+interface TextAnnotationInputProps {
+  annotations: Annotation[];
+  ctxRef: React.MutableRefObject<CanvasRenderingContext2D | null>;
+  canvasRef: React.MutableRefObject<HTMLCanvasElement | null>;
+  defaultColor?: string;
+}
+
+export interface TextAnnotationInputHandle {
+  getText: () => TextInputState;
+  setText: React.Dispatch<React.SetStateAction<TextInputState>>;
+}
+
+const TextAnnotationInput = forwardRef<TextAnnotationInputHandle, TextAnnotationInputProps>((props, ref) => {
   const { annotations, ctxRef, canvasRef, defaultColor } = props;
-  const [text, setText] = useState({
+  const [text, setText] = useState<TextInputState>({
     visible: false,
-    position: { x: 0, y: 0 }, // 初始位置
+    position: { x: 0, y: 0 },
     value: '',
-    id: null, // 正在编辑的标注ID
+    id: null,
     width: DEFAULT_WIDTH,
     height: DEFAULT_HEIGHT,
   });
 
-  const textAreaRef = useRef(null);
-  const focusTimer = useRef(null);
+  const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
+  const focusTimer = useRef<number | null>(null);
 
   const fontColor = useMemo(() => defaultColor, [defaultColor]);
-  // 初始化文本和尺寸
+
   const initTextDimensions = useCallback(() => {
     if (!ctxRef.current || !canvasRef.current) return;
     ctxRef.current.font = TEXT_FONT;
@@ -28,30 +41,28 @@ const TextAnnotationInput = forwardRef((props, ref) => {
     let height = DEFAULT_HEIGHT;
     if (text.id) {
       const annotation = annotations.find((a) => a.id === text.id);
-      if (annotation?.text) {
-        const lines = annotation.text.split('\n');
+      if ((annotation as any)?.text) {
+        const lines = (annotation as any).text.split('\n') as string[];
         height = Math.max(DEFAULT_HEIGHT, lines.length * TEXT_LINE_HEIGHT);
-        width = Math.max(DEFAULT_WIDTH, ...lines.map((line) => ctxRef.current.measureText(line).width)) + 10;
+        width = Math.max(DEFAULT_WIDTH, ...lines.map((line) => (ctxRef.current ? ctxRef.current.measureText(line).width : 0))) + 10;
       }
     }
 
-    // 确保位置在合理范围内
     const x = Math.max(0, Math.min(text.position.x, canvasRef.current.width - width));
     const y = Math.max(16, Math.min(text.position.y, canvasRef.current.height - height));
     setText({ ...text, position: { x, y }, width, height });
   }, [text, annotations, ctxRef, canvasRef]);
 
   const handleChange = useCallback(
-    (e) => {
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       if (!ctxRef.current || !canvasRef.current) return;
       const input = e.target.value;
-      // 计算文本尺寸
       const lines = input.split('\n');
       let totalHeight = 0;
       let maxLineWidth = 0;
 
       lines.forEach((line) => {
-        const metrics = ctxRef.current.measureText(line);
+        const metrics = ctxRef.current!.measureText(line);
         maxLineWidth = Math.max(maxLineWidth, metrics.width);
         totalHeight += TEXT_LINE_HEIGHT;
       });
@@ -60,13 +71,13 @@ const TextAnnotationInput = forwardRef((props, ref) => {
         ...prev,
         value: input,
         width: maxLineWidth + 10,
-        height: Math.min(totalHeight, canvasRef.current.height - prev.position.y - 10),
+        height: Math.min(totalHeight, canvasRef.current!.height - prev.position.y - 10),
       }));
     },
     [ctxRef, canvasRef]
   );
 
-  const handleKeyDown = useCallback((e) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && e.shiftKey) return;
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -79,27 +90,29 @@ const TextAnnotationInput = forwardRef((props, ref) => {
     }
   }, []);
 
-  useImperativeHandle(ref, () => ({
-    getText: () => text,
-    setText,
-  }));
+  useImperativeHandle(
+    ref,
+    () => ({
+      getText: () => text,
+      setText,
+    }),
+    [text]
+  );
 
   useEffect(() => {
     if (!text.visible) return;
     initTextDimensions();
-  }, [text.visible, text.id]);
+  }, [text.visible, text.id, initTextDimensions]);
 
   useEffect(() => {
     if (textAreaRef.current && text.visible) {
-      focusTimer.current && clearTimeout(focusTimer.current);
-      focusTimer.current = setTimeout(() => {
-        textAreaRef.current.focus();
-        // const len = textAreaRef.current.value.length;
-        // textAreaRef.current.setSelectionRange(len, len);
+      if (focusTimer.current) window.clearTimeout(focusTimer.current);
+      focusTimer.current = window.setTimeout(() => {
+        textAreaRef.current && textAreaRef.current.focus();
       }, 200);
     }
     return () => {
-      focusTimer.current && clearTimeout(focusTimer.current);
+      if (focusTimer.current) window.clearTimeout(focusTimer.current);
     };
   }, [text.position, text.visible]);
 

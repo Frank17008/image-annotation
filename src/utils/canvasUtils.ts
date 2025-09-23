@@ -14,7 +14,7 @@ export const measureMultilineText = (ctx: CanvasRenderingContext2D, text: string
   return { width: maxWidth, height: lines.length * TEXT_LINE_HEIGHT };
 };
 
-export const getCanvasPoint = (e: MouseEvent, canvas: HTMLCanvasElement) => {
+export const getCanvasPoint = (e: React.MouseEvent, canvas: HTMLCanvasElement) => {
   const rect = canvas.getBoundingClientRect();
   return { x: e.clientX - rect.left, y: e.clientY - rect.top };
 };
