@@ -50,4 +50,4 @@ tsc-output/
 next-env.d.ts
 
 # pnpm
-pnpm-lock.yaml
+#pnpm-lock.yaml
