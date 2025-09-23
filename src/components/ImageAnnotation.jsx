@@ -3,7 +3,7 @@ import ToolBar from './ToolBar';
 import TextAnnotationInput from './TextAnnotationInput';
 import { drawCircle, drawFreehand, drawRectangle, drawText, drawArrow } from '../tools/drawTool';
 import { drawControlPoint, getBoundingBox } from '../tools/common';
-import { isInAnnotation, throttle, getCanvasPoint } from '../utils/canvasUtils';
+import { isInAnnotation, throttle, getCanvasPoint, cloneAnnotation, download } from '../utils/canvasUtils';
 import './ImageAnnotation.css';
 
 // 设置canvas默认尺寸
@@ -25,36 +25,22 @@ const ImageAnnotation = ({ src }) => {
   const [annotations, setAnnotations] = useState([]);
   const [history, setHistory] = useState([]);
   const [currentTool, setCurrentTool] = useState(null);
-  const [status, setStatus] = useState('请选择工具开始标注');
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
   const textAreaRef = useRef(null);
   const reqAniRef = useRef(null);
   const ctxRef = useRef(null);
 
-  // 深拷贝注解，防止历史记录被后续变更污染
-  const cloneAnnotation = useCallback((ann) => {
-    if (ann?.type === 'freehand' && Array.isArray(ann.points)) {
-      return { ...ann, points: ann.points.map((p) => ({ x: p.x, y: p.y })) };
-    }
-    return { ...ann };
-  }, []);
-
-  const download = () => {
+  const onExport = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const dataUrl = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = 'annotated_image.png';
-    a.click();
-    a.remove();
+    download(canvas);
   };
 
   // 保存历史记录
   const saveHistory = useCallback(() => {
     setHistory((prev) => [...prev, annotations.map(cloneAnnotation)]);
-  }, [annotations, cloneAnnotation]);
+  }, [annotations]);
 
   // 回退上一步
   const undo = () => {
@@ -63,7 +49,6 @@ const ImageAnnotation = ({ src }) => {
       setHistory((prev) => prev.slice(0, -1));
       setAnnotations(lastState);
       setDrawState({ ...drawState, selectedId: null });
-      setStatus(`已回退上一步操作 (剩余 ${history.length - 1} 步历史)`);
     }
   };
 
@@ -73,7 +58,6 @@ const ImageAnnotation = ({ src }) => {
       saveHistory();
       setAnnotations((prev) => prev.filter((a) => a.id !== drawState.selectedId));
       setDrawState({ ...drawState, selectedId: null });
-      setStatus('已删除选中标注');
     }
   }, [drawState.selectedId, annotations]);
 
@@ -233,7 +217,6 @@ const ImageAnnotation = ({ src }) => {
             setAnnotations((prev) => [...prev, { id, type: 'text', x: text.position.x, y: text.position.y + 16, text: text.value, color: '#FF0000' }]);
             textAreaRef.current.setText({ ...text, id, visible: false });
             saveHistory();
-            setStatus(`已添加文字标注: ${text.value}`);
           } else {
             // 更新position
             textAreaRef.current.setText({ ...text, position: { x, y } });
@@ -259,7 +242,7 @@ const ImageAnnotation = ({ src }) => {
       isDragging: !!clickedAnnotation,
       isDrawing: !clickedAnnotation,
     });
-    setStatus(`正在绘制 ${currentTool} (起点: ${x.toFixed(0)}, ${y.toFixed(0)})`);
+    // console.log(`正在绘制 ${currentTool} (起点: ${x.toFixed(0)}, ${y.toFixed(0)})`);
   };
 
   const handleDoubleClick = (e) => {
@@ -322,7 +305,7 @@ const ImageAnnotation = ({ src }) => {
       // 绘制新标注
       if (isDrawing) {
         setDrawState({ ...drawState, freehandPath: currentTool === 'freehand' ? [...freehandPath, { x, y }] : freehandPath, currentPos: { x, y } });
-        setStatus(`正在绘制 ${currentTool} (起点: ${startPos.x.toFixed(0)}, ${startPos.y.toFixed(0)}) → (终点: ${x.toFixed(0)}, ${y.toFixed(0)})`);
+        // console.log(`正在绘制 ${currentTool} (起点: ${startPos.x.toFixed(0)}, ${startPos.y.toFixed(0)}) → (终点: ${x.toFixed(0)}, ${y.toFixed(0)})`);
         drawCanvas();
       }
     },
@@ -336,7 +319,6 @@ const ImageAnnotation = ({ src }) => {
     if (isDragging) {
       saveHistory();
       setDrawState({ ...drawState, isDragging: false, isDrawing: false });
-      setStatus('已移动选中标注');
       return;
     }
     const width = currentPos.x - startPos.x;
@@ -359,9 +341,9 @@ const ImageAnnotation = ({ src }) => {
       };
       freehandPath.length > 0 && setDrawState({ ...drawState, freehandPath: [] });
       setAnnotations((prev) => [...prev, newAnnotation]);
-      setStatus(`已添加 ${currentTool} 标注 (共 ${annotations.length + 1} 个)`);
+      console.log(`已添加 ${currentTool} 标注 (共 ${annotations.length + 1} 个)`);
     } else {
-      setStatus('绘制距离太短，已取消');
+      console.log('绘制距离太短，已取消');
     }
     setDrawState({ selectedId: drawState.selectedId, freehandPath: [], startPos: { x: 0, y: 0 }, currentPos: { x: 0, y: 0 }, isDrawing: false, isDragging: false });
   };
@@ -370,7 +352,6 @@ const ImageAnnotation = ({ src }) => {
     saveHistory();
     setAnnotations([]);
     setDrawState({ ...drawState, selectedId: null });
-    setStatus('已清除所有标注');
   };
 
   useEffect(() => {
@@ -421,24 +402,15 @@ const ImageAnnotation = ({ src }) => {
 
   return (
     <div>
-      <ToolBar currentTool={currentTool} onSelectTool={setCurrentTool} onClear={clearCanvas} onUndo={undo} onDownload={download} historyLength={history.length} />
+      <ToolBar currentTool={currentTool} onSelectTool={setCurrentTool} onClear={clearCanvas} onUndo={undo} onExport={onExport} historyLength={history.length} />
       <div className="image-container">
-        <canvas
-          ref={canvasRef}
-          onMouseDown={handleMouseDown}
-          onMouseMove={throttledMouseMove}
-          onMouseUp={handleMouseUp}
-          // onMouseLeave={handleMouseUp}
-          onDoubleClick={handleDoubleClick}
-          onContextMenu={handleContextMenu}
-        />
+        <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={throttledMouseMove} onMouseUp={handleMouseUp} onDoubleClick={handleDoubleClick} onContextMenu={handleContextMenu} />
         <TextAnnotationInput ref={textAreaRef} annotations={annotations} ctxRef={ctxRef} canvasRef={canvasRef} />
       </div>
-      <div className="status">{status}</div>
-      <div>
+      {/* <div>
         <h3>当前标注 ({annotations.length}个):</h3>
         <pre>{JSON.stringify(annotations, null, 2)}</pre>
-      </div>
+      </div> */}
     </div>
   );
 };

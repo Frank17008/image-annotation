@@ -123,6 +123,22 @@ export const isInAnnotation = (ann: Annotation, x: number, y: number, ctx: Canva
   return false;
 };
 
+export const cloneAnnotation = (ann: Annotation): Annotation => {
+  if (ann?.type === 'freehand' && Array.isArray(ann.points)) {
+    return { ...ann, points: ann.points.map((p) => ({ x: p.x, y: p.y })) };
+  }
+  return { ...ann };
+};
+
+export const download = (canvas: HTMLCanvasElement, filename?: string) => {
+  const dataUrl = canvas.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = `${filename || 'annotated_image.png'}`;
+  a.click();
+  a.remove();
+};
+
 export function throttle(func: (...args: any[]) => any, delay: number) {
   let lastCall = 0;
   return function (this: any, ...args: any[]) {

@@ -6,12 +6,12 @@ interface ToolBarProps {
   onSelectTool: (tool: string) => void;
   onClear: () => void;
   onUndo: () => void;
-  onDownload: () => void;
+  onExport: () => void;
   historyLength: number;
 }
 
 const ToolBar: React.FC<ToolBarProps> = (props: ToolBarProps) => {
-  const { currentTool, onSelectTool, onClear, onUndo, onDownload, historyLength } = props;
+  const { currentTool, onSelectTool, onClear, onUndo, onExport, historyLength } = props;
   return (
     <div className="toolbar">
       <button className={currentTool === 'rectangle' ? 'active' : ''} onClick={() => onSelectTool('rectangle')}>
@@ -40,9 +40,12 @@ const ToolBar: React.FC<ToolBarProps> = (props: ToolBarProps) => {
         清除所有
       </button>
       <button onClick={onUndo} disabled={historyLength === 0} style={{ marginLeft: '10px' }}>
-        撤销 (Ctrl+Z)
+        上一步 (Ctrl+Z)
       </button>
-      <button onClick={onDownload} style={{ marginLeft: '10px' }}>
+      <button onClick={onUndo} disabled={historyLength === 0} style={{ marginLeft: '10px' }}>
+        下一步 (Ctrl+Y)
+      </button>
+      <button onClick={onExport} style={{ marginLeft: '10px' }}>
         导出
       </button>
     </div>
