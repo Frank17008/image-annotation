@@ -1,18 +1,18 @@
 {
   "files": {
-    "main.css": "/Frank17008/image-annotation/static/css/main.4cedb529.chunk.css",
-    "main.js": "/Frank17008/image-annotation/static/js/main.5689cdb2.chunk.js",
-    "main.js.map": "/Frank17008/image-annotation/static/js/main.5689cdb2.chunk.js.map",
-    "runtime-main.js": "/Frank17008/image-annotation/static/js/runtime-main.c668e2f7.js",
-    "runtime-main.js.map": "/Frank17008/image-annotation/static/js/runtime-main.c668e2f7.js.map",
-    "static/js/2.21004f37.chunk.js": "/Frank17008/image-annotation/static/js/2.21004f37.chunk.js",
-    "static/js/2.21004f37.chunk.js.map": "/Frank17008/image-annotation/static/js/2.21004f37.chunk.js.map",
-    "index.html": "/Frank17008/image-annotation/index.html",
-    "static/css/main.4cedb529.chunk.css.map": "/Frank17008/image-annotation/static/css/main.4cedb529.chunk.css.map",
-    "static/js/2.21004f37.chunk.js.LICENSE.txt": "/Frank17008/image-annotation/static/js/2.21004f37.chunk.js.LICENSE.txt"
+    "main.css": "/Frank17008/static/css/main.4cedb529.chunk.css",
+    "main.js": "/Frank17008/static/js/main.5689cdb2.chunk.js",
+    "main.js.map": "/Frank17008/static/js/main.5689cdb2.chunk.js.map",
+    "runtime-main.js": "/Frank17008/static/js/runtime-main.d68b62c6.js",
+    "runtime-main.js.map": "/Frank17008/static/js/runtime-main.d68b62c6.js.map",
+    "static/js/2.21004f37.chunk.js": "/Frank17008/static/js/2.21004f37.chunk.js",
+    "static/js/2.21004f37.chunk.js.map": "/Frank17008/static/js/2.21004f37.chunk.js.map",
+    "index.html": "/Frank17008/index.html",
+    "static/css/main.4cedb529.chunk.css.map": "/Frank17008/static/css/main.4cedb529.chunk.css.map",
+    "static/js/2.21004f37.chunk.js.LICENSE.txt": "/Frank17008/static/js/2.21004f37.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
-    "static/js/runtime-main.c668e2f7.js",
+    "static/js/runtime-main.d68b62c6.js",
     "static/js/2.21004f37.chunk.js",
     "static/css/main.4cedb529.chunk.css",
     "static/js/main.5689cdb2.chunk.js"
