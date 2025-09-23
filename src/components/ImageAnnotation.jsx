@@ -247,18 +247,6 @@ const ImageAnnotation = ({ src }) => {
     // console.log(`正在绘制 ${currentTool} (起点: ${x.toFixed(0)}, ${y.toFixed(0)})`);
   };
 
-  const handleDoubleClick = (e) => {
-    const canvas = canvasRef.current;
-    const ctx = ctxRef.current;
-    if (!ctx || !canvas) return;
-    const { x, y } = getCanvasPoint(e, canvas);
-    const clickedText = annotations.find((a) => a.type === 'text' && isInAnnotation(a, x, y, ctx));
-    // 文字进行编辑
-    if (clickedText) {
-      const text = textAreaRef.current.getText();
-      textAreaRef.current.setText({ ...text, id: clickedText.id, value: clickedText.text, position: { x: clickedText.x, y: clickedText.y - 16 }, visible: true });
-    }
-  };
   const handleContextMenu = () => {
     if (drawState.selectedId) {
       setDrawState({ ...drawState, selectedId: null });
@@ -418,7 +406,7 @@ const ImageAnnotation = ({ src }) => {
         onLineWidthChange={setLineWidth}
       />
       <div className="image-container">
-        <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={throttledMouseMove} onMouseUp={handleMouseUp} onDoubleClick={handleDoubleClick} onContextMenu={handleContextMenu} />
+        <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={throttledMouseMove} onMouseUp={handleMouseUp} onContextMenu={handleContextMenu} />
         <TextAnnotationInput ref={textAreaRef} annotations={annotations} defaultColor={strokeColor} ctxRef={ctxRef} canvasRef={canvasRef} />
       </div>
       {/* <div>
