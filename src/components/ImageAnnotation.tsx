@@ -167,28 +167,28 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
         }
       });
 
-      // if (isDrawing && currentTool) {
-      //   const width = currentPos.x - startPos.x;
-      //   const height = currentPos.y - startPos.y;
-      //   switch (currentTool) {
-      //     case 'rectangle':
-      //       drawRectangle(ctx, { x: startPos.x, y: startPos.y, width, height, color: strokeStyle }, currentLineWidth);
-      //       break;
-      //     case 'circle': {
-      //       const radius = Math.sqrt(width ** 2 + height ** 2);
-      //       drawCircle(ctx, { x: startPos.x, y: startPos.y, radius, color: strokeStyle }, currentLineWidth);
-      //       break;
-      //     }
-      //     case 'arrow':
-      //       drawArrow(ctx, { fromX: startPos.x, fromY: startPos.y, toX: currentPos.x, toY: currentPos.y, color: strokeStyle }, currentLineWidth);
-      //       break;
-      //     case 'freehand':
-      //       drawFreehand(ctx, { points: freehandPath, color: strokeStyle }, currentLineWidth);
-      //       break;
-      //     default:
-      //       break;
-      //   }
-      // }
+      if (isDrawing && currentTool) {
+        const width = currentPos.x - startPos.x;
+        const height = currentPos.y - startPos.y;
+        switch (currentTool) {
+          case 'rectangle':
+            drawRectangle(ctx, { type: 'rectangle', x: startPos.x, y: startPos.y, width, height, color: strokeStyle }, currentLineWidth);
+            break;
+          case 'circle': {
+            const radius = Math.sqrt(width ** 2 + height ** 2);
+            drawCircle(ctx, { type: 'circle', x: startPos.x, y: startPos.y, radius, color: strokeStyle }, currentLineWidth);
+            break;
+          }
+          case 'arrow':
+            drawArrow(ctx, { fromX: startPos.x, fromY: startPos.y, toX: currentPos.x, toY: currentPos.y, color: strokeStyle }, currentLineWidth);
+            break;
+          case 'freehand':
+            drawFreehand(ctx, { type: 'freehand', points: freehandPath, color: strokeStyle }, currentLineWidth);
+            break;
+          default:
+            break;
+        }
+      }
     });
   }, [annotations, drawState, currentTool, strokeColor, lineWidth, drawImage]);
 
