@@ -2,22 +2,28 @@ body {
   font-family: Arial, sans-serif;
   padding: 20px;
 }
-canvas {
-  display: block;
+.image-annotation {
+  display: flex;
+  flex-direction: column;
+  .image-container {
+    position: relative;
+    display: inline-block;
+    border: 1px solid #eee;
+    canvas {
+      cursor: crosshair;
+      display: block;
+    }
+  }
+  .annotation-info {
+    border: 1px solid #eee;
+    margin-left: 20px;
+    padding-left: 10px;
+    flex: 1;
+    height: 600px;
+    overflow: auto;
+  }
 }
-.image-container {
-  position: relative;
-  display: inline-block;
-  border: 1px solid #eee;
-}
-.image-container canvas {
-  cursor: crosshair;
-}
-.status {
-  margin-top: 10px;
-  color: #666;
-  font-size: 14px;
-}
+
 .text-input {
   position: absolute;
   border: 1px dashed #c1c1c1;

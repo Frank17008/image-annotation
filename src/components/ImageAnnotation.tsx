@@ -358,7 +358,7 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
   }, [deleteSelected, undo, currentTool]);
 
   return (
-    <div>
+    <div className="image-annotation">
       <ToolBar
         currentTool={currentTool}
         onSelectTool={setCurrentTool}
@@ -371,9 +371,16 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
         onColorChange={setStrokeColor}
         onLineWidthChange={setLineWidth}
       />
-      <div className="image-container">
-        <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={throttledMouseMove} onMouseUp={handleMouseUp} onContextMenu={handleContextMenu} />
-        <TextAnnotationInput ref={textAreaRef} annotations={annotations} defaultColor={strokeColor} ctxRef={ctxRef} canvasRef={canvasRef} />
+
+      <div style={{ display: 'flex' }}>
+        <div className="image-container">
+          <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={throttledMouseMove} onMouseUp={handleMouseUp} onContextMenu={handleContextMenu} />
+          <TextAnnotationInput ref={textAreaRef} annotations={annotations} defaultColor={strokeColor} ctxRef={ctxRef} canvasRef={canvasRef} />
+        </div>
+        <div className="annotation-info">
+          <h3>当前标注 ({annotations.length}个):</h3>
+          <pre>{JSON.stringify(annotations, null, 2)}</pre>
+        </div>
       </div>
     </div>
   );
