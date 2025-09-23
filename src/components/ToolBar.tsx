@@ -8,12 +8,23 @@ interface ToolBarProps {
   onUndo: () => void;
   onExport: () => void;
   historyLength: number;
+  strokeColor: string;
+  lineWidth: number;
+  onColorChange: (color: string) => void;
+  onLineWidthChange: (width: number) => void;
 }
 
 const ToolBar: React.FC<ToolBarProps> = (props: ToolBarProps) => {
-  const { currentTool, onSelectTool, onClear, onUndo, onExport, historyLength } = props;
+  const { currentTool, onSelectTool, onClear, onUndo, onExport, historyLength, strokeColor, lineWidth, onColorChange, onLineWidthChange } = props;
   return (
     <div className="toolbar">
+      <div className="brush-controls">
+        <label htmlFor="color-picker">颜色:</label>
+        <input id="color-picker" type="color" value={strokeColor} onChange={(e) => onColorChange(e.target.value)} style={{ marginRight: '10px' }} />
+        <label htmlFor="line-width">线宽:</label>
+        <input id="line-width" type="range" min="1" max="10" value={lineWidth} onChange={(e) => onLineWidthChange(Number(e.target.value))} />
+        <span>{lineWidth}px</span>
+      </div>
       <button className={currentTool === 'rectangle' ? 'active' : ''} onClick={() => onSelectTool('rectangle')}>
         矩形
       </button>
@@ -42,9 +53,9 @@ const ToolBar: React.FC<ToolBarProps> = (props: ToolBarProps) => {
       <button onClick={onUndo} disabled={historyLength === 0} style={{ marginLeft: '10px' }}>
         上一步 (Ctrl+Z)
       </button>
-      <button onClick={onUndo} disabled={historyLength === 0} style={{ marginLeft: '10px' }}>
+      {/* <button onClick={onUndo} disabled={historyLength === 0} style={{ marginLeft: '10px' }}>
         下一步 (Ctrl+Y)
-      </button>
+      </button> */}
       <button onClick={onExport} style={{ marginLeft: '10px' }}>
         导出
       </button>

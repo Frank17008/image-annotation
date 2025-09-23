@@ -6,6 +6,7 @@ export interface Point {
 export interface BaseAnnotation {
   id?: string;
   color: string;
+  lineWidth?: number;
 }
 
 export interface RectangleAnnotation extends BaseAnnotation {

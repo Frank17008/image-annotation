@@ -25,6 +25,8 @@ const ImageAnnotation = ({ src }) => {
   const [annotations, setAnnotations] = useState([]);
   const [history, setHistory] = useState([]);
   const [currentTool, setCurrentTool] = useState(null);
+  const [strokeColor, setStrokeColor] = useState('#FF0000');
+  const [lineWidth, setLineWidth] = useState(2);
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
   const textAreaRef = useRef(null);
@@ -119,21 +121,21 @@ const ImageAnnotation = ({ src }) => {
     reqAniRef.current && cancelAnimationFrame(reqAniRef.current);
     reqAniRef.current = requestAnimationFrame(() => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const strokeStyle = '#FF0000';
-      const lineWidth = 2;
+      const strokeStyle = strokeColor;
+      const currentLineWidth = lineWidth;
       // 绘制图片
       drawImage();
       // 绘制已有标注
       annotations.forEach((ann) => {
         switch (ann.type) {
           case 'rectangle':
-            drawRectangle(ctx, ann, lineWidth);
+            drawRectangle(ctx, ann, ann.lineWidth || currentLineWidth);
             break;
           case 'circle':
-            drawCircle(ctx, ann, lineWidth);
+            drawCircle(ctx, ann, ann.lineWidth || currentLineWidth);
             break;
           case 'arrow':
-            drawArrow(ctx, { ...ann, fromX: ann.x, fromY: ann.y, toX: ann.x + ann.width, toY: ann.y + ann.height }, lineWidth);
+            drawArrow(ctx, { ...ann, fromX: ann.x, fromY: ann.y, toX: ann.x + ann.width, toY: ann.y + ann.height }, ann.lineWidth || currentLineWidth);
             break;
           case 'text':
             const text = textAreaRef.current.getText();
@@ -141,7 +143,7 @@ const ImageAnnotation = ({ src }) => {
             drawText(ctx, ann);
             break;
           case 'freehand':
-            drawFreehand(ctx, ann, lineWidth);
+            drawFreehand(ctx, ann, ann.lineWidth || currentLineWidth);
             break;
           default:
             break;
@@ -176,24 +178,24 @@ const ImageAnnotation = ({ src }) => {
         const height = currentPos.y - startPos.y;
         switch (currentTool) {
           case 'rectangle':
-            drawRectangle(ctx, { x: startPos.x, y: startPos.y, width, height, color: strokeStyle }, lineWidth);
+            drawRectangle(ctx, { x: startPos.x, y: startPos.y, width, height, color: strokeStyle }, currentLineWidth);
             break;
           case 'circle':
             const radius = Math.sqrt(width ** 2 + height ** 2);
-            drawCircle(ctx, { x: startPos.x, y: startPos.y, radius, color: strokeStyle }, lineWidth);
+            drawCircle(ctx, { x: startPos.x, y: startPos.y, radius, color: strokeStyle }, currentLineWidth);
             break;
           case 'arrow':
-            drawArrow(ctx, { fromX: startPos.x, fromY: startPos.y, toX: currentPos.x, toY: currentPos.y, color: strokeStyle }, lineWidth);
+            drawArrow(ctx, { fromX: startPos.x, fromY: startPos.y, toX: currentPos.x, toY: currentPos.y, color: strokeStyle }, currentLineWidth);
             break;
           case 'freehand':
-            drawFreehand(ctx, { points: freehandPath, color: strokeStyle }, lineWidth);
+            drawFreehand(ctx, { points: freehandPath, color: strokeStyle }, currentLineWidth);
             break;
           default:
             break;
         }
       }
     });
-  }, [annotations, drawState, currentTool]);
+  }, [annotations, drawState, currentTool, strokeColor, lineWidth]);
 
   const handleMouseDown = (e) => {
     // 鼠标左键双击\鼠标右键\未选中绘制工具
@@ -214,7 +216,7 @@ const ImageAnnotation = ({ src }) => {
           // 点击在空白区域，保存文字
           if (text.value && text.value.trim()) {
             const id = text.id || nextId();
-            setAnnotations((prev) => [...prev, { id, type: 'text', x: text.position.x, y: text.position.y + 16, text: text.value, color: '#FF0000' }]);
+            setAnnotations((prev) => [...prev, { id, type: 'text', x: text.position.x, y: text.position.y + 16, text: text.value, color: strokeColor }]);
             textAreaRef.current.setText({ ...text, id, visible: false });
             saveHistory();
           } else {
@@ -335,7 +337,8 @@ const ImageAnnotation = ({ src }) => {
         y: startPos.y,
         width,
         height,
-        color: '#FF0000',
+        color: strokeColor,
+        lineWidth: lineWidth,
         ...points,
         ...radius,
       };
@@ -402,10 +405,21 @@ const ImageAnnotation = ({ src }) => {
 
   return (
     <div>
-      <ToolBar currentTool={currentTool} onSelectTool={setCurrentTool} onClear={clearCanvas} onUndo={undo} onExport={onExport} historyLength={history.length} />
+      <ToolBar
+        currentTool={currentTool}
+        onSelectTool={setCurrentTool}
+        onClear={clearCanvas}
+        onUndo={undo}
+        onExport={onExport}
+        historyLength={history.length}
+        strokeColor={strokeColor}
+        lineWidth={lineWidth}
+        onColorChange={setStrokeColor}
+        onLineWidthChange={setLineWidth}
+      />
       <div className="image-container">
         <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={throttledMouseMove} onMouseUp={handleMouseUp} onDoubleClick={handleDoubleClick} onContextMenu={handleContextMenu} />
-        <TextAnnotationInput ref={textAreaRef} annotations={annotations} ctxRef={ctxRef} canvasRef={canvasRef} />
+        <TextAnnotationInput ref={textAreaRef} annotations={annotations} defaultColor={strokeColor} ctxRef={ctxRef} canvasRef={canvasRef} />
       </div>
       {/* <div>
         <h3>当前标注 ({annotations.length}个):</h3>

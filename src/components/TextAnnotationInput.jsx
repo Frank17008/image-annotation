@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, memo, useImperativeHandle, forwardRef } from 'react';
+import { useState, useRef, useEffect, useCallback, memo, useMemo, useImperativeHandle, forwardRef } from 'react';
 import { TEXT_FONT, TEXT_LINE_HEIGHT } from '../utils/canvasUtils';
 import './ImageAnnotation.css';
 
@@ -6,7 +6,7 @@ const DEFAULT_WIDTH = 200;
 const DEFAULT_HEIGHT = 24;
 
 const TextAnnotationInput = forwardRef((props, ref) => {
-  const { annotations, ctxRef, canvasRef } = props;
+  const { annotations, ctxRef, canvasRef, defaultColor } = props;
   const [text, setText] = useState({
     visible: false,
     position: { x: 0, y: 0 }, // 初始位置
@@ -15,9 +15,11 @@ const TextAnnotationInput = forwardRef((props, ref) => {
     width: DEFAULT_WIDTH,
     height: DEFAULT_HEIGHT,
   });
+
   const textAreaRef = useRef(null);
   const focusTimer = useRef(null);
 
+  const fontColor = useMemo(() => defaultColor, [defaultColor]);
   // 初始化文本和尺寸
   const initTextDimensions = useCallback(() => {
     if (!ctxRef.current || !canvasRef.current) return;
@@ -114,6 +116,7 @@ const TextAnnotationInput = forwardRef((props, ref) => {
             top: text.position.y,
             width: text.width,
             height: text.height,
+            color: fontColor,
           }}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
