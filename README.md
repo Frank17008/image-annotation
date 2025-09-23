@@ -9,27 +9,20 @@
 - **交互操作**：支持拖拽移动、撤销操作、删除标注
 - **数据导出**：可导出标注后的图片以及标注数据
 - **响应式设计**：自动适应不同尺寸的容器
-- **快捷键支持**：支持键盘快捷键操作，提升标注效率
-
-## 🛠 技术栈
-
-- React 18
-- TypeScript
-- Canvas API
-- CSS 样式
+- **快捷键支持**：支持键盘快捷键操作
 
 ## 🚀 快速开始
 
 ### 安装依赖
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 开发模式
 
 ```bash
-npm start
+pnpm start
 ```
 
 在浏览器中打开 http://localhost:3000 查看应用。
@@ -37,7 +30,7 @@ npm start
 ### 构建生产版本
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 构建后的文件将生成在 `build` 目录中。
