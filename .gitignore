@@ -49,5 +49,8 @@ tsc-output/
 *.tsbuildinfo
 next-env.d.ts
 
+/packages/*/node_modules
+/packages/*/dist
+
 # pnpm
 #pnpm-lock.yaml

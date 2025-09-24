@@ -5,6 +5,7 @@
   "main": "src/index.tsx",
   "homepage": "https://frank17008.github.io/image-annotation/",
   "scripts": {
+    "build:lib": "pnpm --filter @frank17008/image-annotation build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
@@ -12,6 +13,7 @@
     "deploy": "npm run build && gh-pages -d build"
   },
   "dependencies": {
+    "@frank17008/image-annotation": "workspace:*",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

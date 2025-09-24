@@ -1,0 +1,36 @@
+{
+  "name": "@frank17008/image-annotation",
+  "version": "0.1.0",
+  "description": "React image annotation component",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./dist/index.css": "./dist/index.css"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup --env.NODE_ENV production",
+    "dev": "tsup --env.NODE_ENV development --watch",
+    "prepublishOnly": "pnpm run build"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.1",
+    "typescript": "^5.2.2"
+  }
+}
