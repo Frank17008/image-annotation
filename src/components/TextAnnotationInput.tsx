@@ -57,21 +57,21 @@ const TextAnnotationInput = forwardRef<TextAnnotationInputHandle, TextAnnotation
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       if (!ctxRef.current || !canvasRef.current) return;
       const input = e.target.value;
-      const lines = input.split('\n');
-      let totalHeight = 0;
-      let maxLineWidth = 0;
+      // const lines = input.split('\n');
+      // let totalHeight = 0;
+      // let maxLineWidth = 0;
 
-      lines.forEach((line) => {
-        const metrics = ctxRef.current!.measureText(line);
-        maxLineWidth = Math.max(maxLineWidth, metrics.width);
-        totalHeight += TEXT_LINE_HEIGHT;
-      });
+      // lines.forEach((line) => {
+      //   const metrics = ctxRef.current!.measureText(line);
+      //   maxLineWidth = Math.max(maxLineWidth, metrics.width);
+      //   totalHeight += TEXT_LINE_HEIGHT;
+      // });
 
       setText((prev) => ({
         ...prev,
         value: input,
-        width: maxLineWidth + 10,
-        height: Math.min(totalHeight, canvasRef.current!.height - prev.position.y - 10),
+        // width: maxLineWidth + 10,
+        // height: Math.min(totalHeight, canvasRef.current!.height - prev.position.y - 10),
       }));
     },
     [ctxRef, canvasRef]
@@ -102,17 +102,17 @@ const TextAnnotationInput = forwardRef<TextAnnotationInputHandle, TextAnnotation
   useEffect(() => {
     if (!text.visible) return;
     initTextDimensions();
-  }, [text.visible, text.id, initTextDimensions]);
+  }, [text.visible, text.id]);
 
   useEffect(() => {
     if (textAreaRef.current && text.visible) {
-      if (focusTimer.current) window.clearTimeout(focusTimer.current);
+      focusTimer.current && window.clearTimeout(focusTimer.current);
       focusTimer.current = window.setTimeout(() => {
         textAreaRef.current && textAreaRef.current.focus();
       }, 200);
     }
     return () => {
-      if (focusTimer.current) window.clearTimeout(focusTimer.current);
+      focusTimer.current && window.clearTimeout(focusTimer.current);
     };
   }, [text.position, text.visible]);
 
