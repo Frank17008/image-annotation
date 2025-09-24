@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import ToolBar from './ToolBar';
 import TextAnnotationInput, { TextAnnotationInputHandle } from './TextAnnotationInput';
-import { drawCircle, drawFreehand, drawRectangle, drawText, drawArrow } from '../tools/drawTool';
 import { drawControlPoint, getBoundingBox } from '../tools/common';
-import { isInAnnotation, throttle, getCanvasPoint, cloneAnnotation, download } from '../utils/canvasUtils';
+import * as DrawTools from '../tools/drawTool';
+import * as CanvasUtils from '../utils/canvasUtils';
 import type { Annotation, ToolType } from '../types/annotations';
 import './ImageAnnotation.css';
 
@@ -50,11 +50,11 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
   const onExport = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    download(canvas);
+    CanvasUtils.download(canvas);
   };
 
   const saveHistory = useCallback(() => {
-    setHistory((prev) => [...prev, annotations.map(cloneAnnotation)]);
+    setHistory((prev) => [...prev, annotations.map(CanvasUtils.cloneAnnotation)]);
     setRedoHistory([]);
   }, [annotations]);
 
@@ -62,7 +62,7 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
     if (history.length > 0) {
       const lastState = history[history.length - 1];
       setHistory((prev) => prev.slice(0, -1));
-      setRedoHistory((prev) => [...prev, annotations.map(cloneAnnotation)]);
+      setRedoHistory((prev) => [...prev, annotations.map(CanvasUtils.cloneAnnotation)]);
       setAnnotations(lastState);
       setDrawState((prev) => ({ ...prev, selectedId: null }));
     }
@@ -72,7 +72,7 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
     if (redoHistory.length > 0) {
       const nextState = redoHistory[redoHistory.length - 1];
       setRedoHistory((prev) => prev.slice(0, -1));
-      setHistory((prev) => [...prev, annotations.map(cloneAnnotation)]);
+      setHistory((prev) => [...prev, annotations.map(CanvasUtils.cloneAnnotation)]);
       setAnnotations(nextState);
       setDrawState((prev) => ({ ...prev, selectedId: null }));
     }
@@ -116,11 +116,7 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
     const canvas = canvasRef.current;
     const ctx = ctxRef.current;
     if (!canvas || !ctx || !imageRef.current) return;
-    const ratio = Math.min(DEFAULT_WIDTH / imageRef.current.naturalWidth, DEFAULT_HEIGHT / imageRef.current.naturalHeight);
-    const displayWidth = imageRef.current.naturalWidth * ratio;
-    const displayHeight = imageRef.current.naturalHeight * ratio;
-    const offsetX = (DEFAULT_WIDTH - displayWidth) / 2;
-    const offsetY = (DEFAULT_HEIGHT - displayHeight) / 2;
+    const { ratio, displayWidth, displayHeight, offsetX, offsetY } = CanvasUtils.computeImageFit(imageRef.current.naturalWidth, imageRef.current.naturalHeight, DEFAULT_WIDTH, DEFAULT_HEIGHT);
     ctx.drawImage(imageRef.current, offsetX, offsetY, displayWidth, displayHeight);
     canvas.dataset.scale = `${ratio}`;
     canvas.dataset.offsetX = `${offsetX}`;
@@ -141,22 +137,22 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
       annotations.forEach((ann) => {
         switch (ann.type) {
           case 'rectangle':
-            drawRectangle(ctx, ann, ann.lineWidth || currentLineWidth);
+            DrawTools.drawRectangle(ctx, ann, ann.lineWidth || currentLineWidth);
             break;
           case 'circle':
-            drawCircle(ctx, ann, ann.lineWidth || currentLineWidth);
+            DrawTools.drawCircle(ctx, ann, ann.lineWidth || currentLineWidth);
             break;
           case 'arrow':
-            drawArrow(ctx, { ...ann, fromX: ann.x, fromY: ann.y, toX: ann.x + ann.width, toY: ann.y + ann.height }, ann.lineWidth || currentLineWidth);
+            DrawTools.drawArrow(ctx, { ...ann, fromX: ann.x, fromY: ann.y, toX: ann.x + ann.width, toY: ann.y + ann.height }, ann.lineWidth || currentLineWidth);
             break;
           case 'text': {
             const text = textAreaRef.current?.getText();
             if (text?.visible && text.id === ann.id) return;
-            drawText(ctx, ann);
+            DrawTools.drawText(ctx, ann);
             break;
           }
           case 'freehand':
-            drawFreehand(ctx, ann, ann.lineWidth || currentLineWidth);
+            DrawTools.drawFreehand(ctx, ann, ann.lineWidth || currentLineWidth);
             break;
           default:
             break;
@@ -185,18 +181,18 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
         const height = currentPos.y - startPos.y;
         switch (currentTool) {
           case 'rectangle':
-            drawRectangle(ctx, { type: 'rectangle', x: startPos.x, y: startPos.y, width, height, color: strokeStyle }, currentLineWidth);
+            DrawTools.drawRectangle(ctx, { type: 'rectangle', x: startPos.x, y: startPos.y, width, height, color: strokeStyle }, currentLineWidth);
             break;
           case 'circle': {
             const radius = Math.sqrt(width ** 2 + height ** 2);
-            drawCircle(ctx, { type: 'circle', x: startPos.x, y: startPos.y, radius, color: strokeStyle }, currentLineWidth);
+            DrawTools.drawCircle(ctx, { type: 'circle', x: startPos.x, y: startPos.y, radius, color: strokeStyle }, currentLineWidth);
             break;
           }
           case 'arrow':
-            drawArrow(ctx, { fromX: startPos.x, fromY: startPos.y, toX: currentPos.x, toY: currentPos.y, color: strokeStyle }, currentLineWidth);
+            DrawTools.drawArrow(ctx, { fromX: startPos.x, fromY: startPos.y, toX: currentPos.x, toY: currentPos.y, color: strokeStyle }, currentLineWidth);
             break;
           case 'freehand':
-            drawFreehand(ctx, { type: 'freehand', points: freehandPath, color: strokeStyle }, currentLineWidth);
+            DrawTools.drawFreehand(ctx, { type: 'freehand', points: freehandPath, color: strokeStyle }, currentLineWidth);
             break;
           default:
             break;
@@ -210,8 +206,10 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
     const canvas = canvasRef.current;
     const ctx = ctxRef.current;
     if (!canvas || !ctx) return;
-    const { x, y } = getCanvasPoint(e, canvas);
-    const isOnTextAnnotation = annotations.filter((ann) => ann.type === 'text').some((ann) => isInAnnotation(ann, x, y, ctx));
+    const { x, y } = CanvasUtils.getCanvasPoint(e, canvas);
+
+    const isOnTextAnnotation = annotations.filter((ann) => ann.type === 'text').some((ann) => CanvasUtils.isInAnnotation(ann, x, y, ctx));
+
     if (!isOnTextAnnotation) {
       const text = textAreaRef.current?.getText();
       if (currentTool === 'text') {
@@ -228,21 +226,22 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
           textAreaRef.current?.setText((prev) => ({ ...prev, visible: true, position: { x, y }, value: '', id: null }));
         }
         return;
-      } else {
-        text?.visible && textAreaRef.current?.setText({ ...text, visible: false });
+      }
+      if (text?.visible) {
+        textAreaRef.current?.setText({ ...text, visible: false });
       }
     }
 
-    const clickedAnnotation = [...annotations].reverse().find((ann) => isInAnnotation(ann, x, y, ctx));
-    setDrawState({
-      ...drawState,
+    const clickedAnnotation = [...annotations].reverse().find((ann) => CanvasUtils.isInAnnotation(ann, x, y, ctx));
+    setDrawState((prev) => ({
+      ...prev,
       startPos: { x, y },
       currentPos: { x, y },
       freehandPath: currentTool === 'freehand' ? [{ x, y }] : [],
       selectedId: clickedAnnotation?.id || null,
       isDragging: !!clickedAnnotation,
       isDrawing: !clickedAnnotation,
-    });
+    }));
   };
 
   const handleContextMenu = () => {
@@ -256,72 +255,80 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
       const canvas = canvasRef.current;
       const ctx = ctxRef.current;
       if (!canvas || !ctx) return;
-      const { startPos, currentPos, isDragging, isDrawing, selectedId, freehandPath } = drawState;
-      const { x, y } = getCanvasPoint(e, canvas);
-      const isOnAnnotation = annotations.some((ann) => isInAnnotation(ann, x, y, ctx));
+      const { x, y } = CanvasUtils.getCanvasPoint(e, canvas);
+
+      const isOnAnnotation = annotations.some((ann) => CanvasUtils.isInAnnotation(ann, x, y, ctx));
       canvas.style.cursor = isOnAnnotation ? 'move' : 'crosshair';
-      if (isDragging && selectedId) {
-        const dx = x - currentPos.x;
-        const dy = y - currentPos.y;
-        setAnnotations((prev) =>
-          prev.map((ann) => {
-            if (ann.id === selectedId) {
+
+      setDrawState((prev) => {
+        const { isDragging, selectedId, currentPos, isDrawing, freehandPath } = prev;
+        if (isDragging && selectedId) {
+          const dx = x - currentPos.x;
+          const dy = y - currentPos.y;
+          if (!CanvasUtils.isSignificantDrag(dx, dy)) {
+            return prev;
+          }
+          setAnnotations((annList) =>
+            annList.map((ann) => {
+              if (ann.id !== selectedId) return ann;
               if (ann.type === 'freehand') {
-                return {
-                  ...ann,
-                  points: ann.points.map((point: any) => ({ x: point.x + dx, y: point.y + dy })),
-                };
-              } else {
-                return { ...ann, x: ann.x + dx, y: ann.y + dy };
+                return { ...ann, points: ann.points.map((p: any) => ({ x: p.x + dx, y: p.y + dy })) };
               }
-            }
-            return ann;
-          })
-        );
-        setDrawState({ ...drawState, currentPos: { x, y } });
-        drawCanvas();
-        return;
-      }
-      if (isDrawing) {
-        setDrawState({ ...drawState, freehandPath: currentTool === 'freehand' ? [...freehandPath, { x, y }] : freehandPath, currentPos: { x, y } });
-        drawCanvas();
-      }
+              return { ...ann, x: ann.x + dx, y: ann.y + dy };
+            })
+          );
+          drawCanvas();
+          return { ...prev, currentPos: { x, y } };
+        }
+
+        if (isDrawing) {
+          const nextFreehand = currentTool === 'freehand' ? [...freehandPath, { x, y }] : freehandPath;
+          drawCanvas();
+          return { ...prev, currentPos: { x, y }, freehandPath: nextFreehand };
+        }
+
+        return prev;
+      });
     },
-    [drawState, currentTool, annotations, drawCanvas]
+    [annotations, currentTool, drawCanvas]
   );
 
-  const throttledMouseMove = useMemo(() => throttle(handleMouseMove, 50), [handleMouseMove]);
+  const throttledMouseMove = useMemo(() => CanvasUtils.throttle(handleMouseMove, 50), [handleMouseMove]);
 
   const handleMouseUp = () => {
     const { startPos, currentPos, isDrawing, isDragging, freehandPath } = drawState;
-    if ((isDrawing && isDragging) || !currentTool) return;
+    if (!currentTool) return;
     if (isDragging) {
       saveHistory();
-      setDrawState({ ...drawState, isDragging: false, isDrawing: false });
+      setDrawState((prev) => ({ ...prev, isDragging: false, isDrawing: false }));
       return;
     }
+    if (!isDrawing) return;
     const width = currentPos.x - startPos.x;
     const height = currentPos.y - startPos.y;
-    if (['rectangle', 'circle', 'arrow', 'freehand'].includes(currentTool) && (Math.abs(width) > 3 || Math.abs(height) > 3)) {
+    if (CanvasUtils.shouldCommitShape(currentTool, width, height)) {
       saveHistory();
-      const points = currentTool === 'freehand' ? { points: [...freehandPath] } : {};
-      const radius = currentTool === 'circle' ? { radius: Math.sqrt(width ** 2 + height ** 2) } : {};
-      const newAnnotation: any = {
+      const newAnnotation = CanvasUtils.createNewAnnotation({
         id: nextId(),
-        type: currentTool,
-        x: startPos.x,
-        y: startPos.y,
+        tool: currentTool,
+        startX: startPos.x,
+        startY: startPos.y,
         width,
         height,
         color: strokeColor,
         lineWidth: lineWidth,
-        ...points,
-        ...radius,
-      };
-      freehandPath.length > 0 && setDrawState({ ...drawState, freehandPath: [] });
+        freehandPath,
+      });
       setAnnotations((prev) => [...prev, newAnnotation]);
     }
-    setDrawState({ selectedId: drawState.selectedId, freehandPath: [], startPos: { x: 0, y: 0 }, currentPos: { x: 0, y: 0 }, isDrawing: false, isDragging: false });
+    setDrawState((prev) => ({
+      selectedId: prev.selectedId,
+      freehandPath: [],
+      startPos: { x: 0, y: 0 },
+      currentPos: { x: 0, y: 0 },
+      isDrawing: false,
+      isDragging: false,
+    }));
   };
 
   const clearCanvas = () => {

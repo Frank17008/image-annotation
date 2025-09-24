@@ -1,4 +1,4 @@
-import type { Annotation } from '../types/annotations';
+import type { Annotation, ToolType } from '../types/annotations';
 
 export const TEXT_FONT: string = '16px Arial';
 export const TEXT_LINE_HEIGHT: number = 20;
@@ -148,4 +148,49 @@ export function throttle(func: (...args: any[]) => any, delay: number) {
       lastCall = now;
     }
   };
+}
+
+export function computeImageFit(naturalWidth: number, naturalHeight: number, maxWidth: number, maxHeight: number) {
+  if (naturalWidth <= 0 || naturalHeight <= 0 || maxWidth <= 0 || maxHeight <= 0) {
+    return { ratio: 1, displayWidth: naturalWidth, displayHeight: naturalHeight, offsetX: 0, offsetY: 0 };
+  }
+  const ratio = Math.min(maxWidth / naturalWidth, maxHeight / naturalHeight);
+  const displayWidth = naturalWidth * ratio;
+  const displayHeight = naturalHeight * ratio;
+  const offsetX = (maxWidth - displayWidth) / 2;
+  const offsetY = (maxHeight - displayHeight) / 2;
+  return { ratio, displayWidth, displayHeight, offsetX, offsetY };
+}
+
+export function isSignificantDrag(dx: number, dy: number) {
+  return Math.abs(dx) > 0.0001 || Math.abs(dy) > 0.0001;
+}
+
+export function shouldCommitShape(tool: ToolType, width: number, height: number) {
+  if (!tool) return false;
+  if (!['rectangle', 'circle', 'arrow', 'freehand'].includes(tool)) return false;
+  return Math.abs(width) > 3 || Math.abs(height) > 3;
+}
+
+export function createNewAnnotation(params: {
+  id: string;
+  tool: ToolType;
+  startX: number;
+  startY: number;
+  width: number;
+  height: number;
+  color: string;
+  lineWidth: number;
+  freehandPath: Array<{ x: number; y: number }>;
+}): any {
+  const { id, tool, startX, startY, width, height, color, lineWidth, freehandPath } = params;
+  const common = { id, type: tool, x: startX, y: startY, width, height, color, lineWidth } as any;
+  if (tool === 'freehand') {
+    return { ...common, points: [...freehandPath] };
+  }
+  if (tool === 'circle') {
+    const radius = Math.sqrt(width ** 2 + height ** 2);
+    return { ...common, radius };
+  }
+  return common;
 }
