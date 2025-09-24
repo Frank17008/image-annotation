@@ -37,6 +37,7 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
   });
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [history, setHistory] = useState<Annotation[][]>([]);
+  const [redoHistory, setRedoHistory] = useState<Annotation[][]>([]);
   const [currentTool, setCurrentTool] = useState<ToolType>(null);
   const [strokeColor, setStrokeColor] = useState<string>('#FF0000');
   const [lineWidth, setLineWidth] = useState<number>(2);
@@ -54,13 +55,25 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
 
   const saveHistory = useCallback(() => {
     setHistory((prev) => [...prev, annotations.map(cloneAnnotation)]);
+    setRedoHistory([]);
   }, [annotations]);
 
   const undo = () => {
     if (history.length > 0) {
       const lastState = history[history.length - 1];
       setHistory((prev) => prev.slice(0, -1));
+      setRedoHistory((prev) => [...prev, annotations.map(cloneAnnotation)]);
       setAnnotations(lastState);
+      setDrawState((prev) => ({ ...prev, selectedId: null }));
+    }
+  };
+
+  const redo = () => {
+    if (redoHistory.length > 0) {
+      const nextState = redoHistory[redoHistory.length - 1];
+      setRedoHistory((prev) => prev.slice(0, -1));
+      setHistory((prev) => [...prev, annotations.map(cloneAnnotation)]);
+      setAnnotations(nextState);
       setDrawState((prev) => ({ ...prev, selectedId: null }));
     }
   };
@@ -344,6 +357,8 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
         deleteSelected();
       } else if (e.ctrlKey && e.key === 'z') {
         undo();
+      } else if (e.ctrlKey && e.key === 'y') {
+        redo();
       } else if (e.key === 'Escape') {
         if (currentTool === 'text' && text?.visible) {
           textAreaRef.current?.setText({ ...text, visible: false });
@@ -355,7 +370,7 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
       window.removeEventListener('keydown', handleKeyDown);
       if (reqAniRef.current) cancelAnimationFrame(reqAniRef.current);
     };
-  }, [deleteSelected, undo, currentTool]);
+  }, [deleteSelected, undo, redo, currentTool]);
 
   return (
     <div className="image-annotation">
@@ -364,8 +379,10 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
         onSelectTool={setCurrentTool}
         onClear={clearCanvas}
         onUndo={undo}
+        onRedo={redo}
         onExport={onExport}
         historyLength={history.length}
+        redoHistoryLength={redoHistory.length}
         strokeColor={strokeColor}
         lineWidth={lineWidth}
         onColorChange={setStrokeColor}

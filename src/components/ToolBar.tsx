@@ -7,8 +7,10 @@ interface ToolBarProps {
   onSelectTool: (tool: ToolType) => void;
   onClear: () => void;
   onUndo: () => void;
+  onRedo: () => void;
   onExport: () => void;
   historyLength: number;
+  redoHistoryLength: number;
   strokeColor: string;
   lineWidth: number;
   onColorChange: (color: string) => void;
@@ -16,7 +18,7 @@ interface ToolBarProps {
 }
 
 const ToolBar: React.FC<ToolBarProps> = (props: ToolBarProps) => {
-  const { currentTool, onSelectTool, onClear, onUndo, onExport, historyLength, strokeColor, lineWidth, onColorChange, onLineWidthChange } = props;
+  const { currentTool, onSelectTool, onClear, onUndo, onRedo, onExport, historyLength, redoHistoryLength, strokeColor, lineWidth, onColorChange, onLineWidthChange } = props;
   return (
     <div className="toolbar">
       <div className="brush-controls">
@@ -54,9 +56,9 @@ const ToolBar: React.FC<ToolBarProps> = (props: ToolBarProps) => {
       <button onClick={onUndo} disabled={historyLength === 0} style={{ marginLeft: '10px' }}>
         上一步 (Ctrl+Z)
       </button>
-      {/* <button onClick={onUndo} disabled={historyLength === 0} style={{ marginLeft: '10px' }}>
+      <button onClick={onRedo} disabled={redoHistoryLength === 0} style={{ marginLeft: '10px' }}>
         下一步 (Ctrl+Y)
-      </button> */}
+      </button>
       <button onClick={onExport} style={{ marginLeft: '10px' }}>
         导出
       </button>
