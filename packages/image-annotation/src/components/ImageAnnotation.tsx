@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import ToolBar from './ToolBar';
 import TextAnnotationInput, { TextAnnotationInputHandle } from './TextAnnotationInput';
-import * as DrawTools from '../tools/drawTool';
+import * as DrawTools from '../utils/drawTool';
 import * as CanvasUtils from '../utils/canvasUtils';
 import type { Annotation, ToolType } from '../types/annotations';
 import './ImageAnnotation.css';
