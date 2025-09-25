@@ -1,0 +1,15 @@
+body {
+  padding: 20px;
+}
+
+.container {
+  display: flex;
+  .annotation-info {
+    border: 1px solid #eee;
+    margin-left: 20px;
+    padding-left: 10px;
+    flex: 1;
+    height: 600px;
+    overflow: auto;
+  }
+}

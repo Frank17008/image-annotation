@@ -11,6 +11,7 @@ const DEFAULT_HEIGHT = 600;
 
 interface ImageAnnotationProps {
   src: string;
+  onChange?: (d: Annotation[]) => void;
 }
 
 interface DrawState {
@@ -31,10 +32,9 @@ const initialState: DrawState = {
   selectedId: null,
 };
 
-const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
+const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, onChange }) => {
   const idRef = useRef(0);
   const nextId = useCallback(() => `${Date.now()}-${idRef.current++}`, []);
-
   const [drawState, setDrawState] = useState<DrawState>(initialState);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [history, setHistory] = useState<Annotation[][]>([]);
@@ -260,9 +260,7 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
       const { x, y } = CanvasUtils.getCanvasPoint(e, canvas);
 
       const isOnAnnotation = annotations.some((ann) => CanvasUtils.isOnAnnotation(ann, x, y, ctx));
-      console.info('isOnAnnotation', isOnAnnotation);
       canvas.style.cursor = isOnAnnotation ? 'move' : 'crosshair';
-      console.info('canvas.style.cursor', canvas.style.cursor);
 
       setDrawState((prev) => {
         const { isDragging, selectedId, currentPos, isDrawing, freehandPath } = prev;
@@ -353,6 +351,10 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
   }, [annotations, drawState.isDragging, drawState.isDrawing, drawState.selectedId, drawCanvas]);
 
   useEffect(() => {
+    onChange?.(annotations);
+  }, [annotations]);
+
+  useEffect(() => {
     setDrawState({ ...initialState });
     if (textAreaRef.current?.getText()?.visible) {
       textAreaRef.current?.setText((text) => ({ ...text, visible: false }));
@@ -400,16 +402,9 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
         onColorChange={setStrokeColor}
         onLineWidthChange={setLineWidth}
       />
-
-      <div style={{ display: 'flex' }}>
-        <div className="image-container">
-          <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={throttledMouseMove} onMouseUp={handleMouseUp} onContextMenu={handleContextMenu} />
-          <TextAnnotationInput ref={textAreaRef} annotations={annotations} defaultColor={strokeColor} ctxRef={ctxRef} canvasRef={canvasRef} />
-        </div>
-        <div className="annotation-info">
-          <h3>当前标注 ({annotations.length}个):</h3>
-          <pre>{JSON.stringify(annotations, null, 2)}</pre>
-        </div>
+      <div className="image-container">
+        <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={throttledMouseMove} onMouseUp={handleMouseUp} onContextMenu={handleContextMenu} />
+        <TextAnnotationInput ref={textAreaRef} annotations={annotations} defaultColor={strokeColor} ctxRef={ctxRef} canvasRef={canvasRef} />
       </div>
     </div>
   );

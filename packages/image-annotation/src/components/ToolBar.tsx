@@ -41,7 +41,7 @@ const ToolBar: React.FC<ToolBarProps> = (props: ToolBarProps) => {
         文字
       </button>
       <button className={currentTool === 'freehand' ? 'active' : ''} onClick={() => onSelectTool('freehand')}>
-        自由线条
+        画笔
       </button>
       <button
         onClick={onClear}
