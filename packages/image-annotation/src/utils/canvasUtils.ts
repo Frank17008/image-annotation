@@ -93,7 +93,7 @@ export const isPointNearLine = (x: number, y: number, x1: number, y1: number, x2
   return Math.sqrt(dx * dx + dy * dy) < threshold;
 };
 
-export const isInAnnotation = (ann: Annotation, x: number, y: number, ctx: CanvasRenderingContext2D) => {
+export const isOnAnnotation = (ann: Annotation, x: number, y: number, ctx: CanvasRenderingContext2D) => {
   if (ann.type === 'rectangle') {
     const lineWidth = 2;
     return (

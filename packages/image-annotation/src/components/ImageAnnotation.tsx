@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import ToolBar from './ToolBar';
-import TextAnnotationInput, { TextAnnotationInputHandle } from './TextAnnotationInput';
+import TextAnnotationInput, { type TextAnnotationInputHandle, type TextInputState } from './TextAnnotationInput';
 import * as DrawTools from '../utils/drawTool';
 import * as CanvasUtils from '../utils/canvasUtils';
 import type { Annotation, ToolType } from '../types/annotations';
@@ -22,18 +22,20 @@ interface DrawState {
   selectedId: string | null;
 }
 
+const initialState: DrawState = {
+  isDrawing: false,
+  isDragging: false,
+  startPos: { x: 0, y: 0 },
+  currentPos: { x: 0, y: 0 },
+  freehandPath: [],
+  selectedId: null,
+};
+
 const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
   const idRef = useRef(0);
   const nextId = useCallback(() => `${Date.now()}-${idRef.current++}`, []);
 
-  const [drawState, setDrawState] = useState<DrawState>({
-    isDrawing: false,
-    isDragging: false,
-    startPos: { x: 0, y: 0 },
-    currentPos: { x: 0, y: 0 },
-    freehandPath: [],
-    selectedId: null,
-  });
+  const [drawState, setDrawState] = useState<DrawState>(initialState);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [history, setHistory] = useState<Annotation[][]>([]);
   const [redoHistory, setRedoHistory] = useState<Annotation[][]>([]);
@@ -205,33 +207,35 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
     const canvas = canvasRef.current;
     const ctx = ctxRef.current;
     if (!canvas || !ctx) return;
+
     const { x, y } = CanvasUtils.getCanvasPoint(e, canvas);
 
-    const isOnTextAnnotation = annotations.filter((ann) => ann.type === 'text').some((ann) => CanvasUtils.isInAnnotation(ann, x, y, ctx));
+    const clickedAnnotation = [...annotations].reverse().find((ann) => CanvasUtils.isOnAnnotation(ann, x, y, ctx));
 
-    if (!isOnTextAnnotation) {
-      const text = textAreaRef.current?.getText();
-      if (currentTool === 'text') {
-        if (text?.visible) {
-          if (text.value && text.value.trim()) {
-            const id = text.id || nextId();
-            setAnnotations((prev) => [...prev, { id, type: 'text', x: text.position.x, y: text.position.y + 16, text: text.value, color: strokeColor }]);
-            textAreaRef.current?.setText({ ...text, id, visible: false });
-            saveHistory();
-          } else {
-            textAreaRef.current?.setText((prev) => ({ ...prev, position: { x, y } }));
-          }
+    if (currentTool === 'text') {
+      const text = textAreaRef.current?.getText() as TextInputState;
+      if (clickedAnnotation?.type) {
+        // 输入框是否有值,有值绘,无值则重置
+        if (text.value && text.value.trim()) {
+          const id = text.id || nextId();
+          setAnnotations((prev) => [...prev, { id, type: 'text', x: text.position.x, y: text.position.y + 16, text: text.value, color: strokeColor }]);
+          saveHistory();
+        }
+        textAreaRef.current?.resetText();
+      } else {
+        // 输入框是否有值,有值绘,无值则更改坐标
+        if (text.value && text.value.trim()) {
+          const id = text.id || nextId();
+          setAnnotations((prev) => [...prev, { id, type: 'text', x: text.position.x, y: text.position.y + 16, text: text.value, color: strokeColor }]);
+          textAreaRef.current?.resetText();
+          saveHistory();
         } else {
-          textAreaRef.current?.setText((prev) => ({ ...prev, visible: true, position: { x, y }, value: '', id: null }));
+          textAreaRef.current?.setText((prev) => ({ ...prev, visible: true, position: { x, y } }));
         }
         return;
       }
-      if (text?.visible) {
-        textAreaRef.current?.setText({ ...text, visible: false });
-      }
     }
 
-    const clickedAnnotation = [...annotations].reverse().find((ann) => CanvasUtils.isInAnnotation(ann, x, y, ctx));
     setDrawState((prev) => ({
       ...prev,
       startPos: { x, y },
@@ -243,10 +247,9 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
     }));
   };
 
-  const handleContextMenu = () => {
-    if (drawState.selectedId) {
-      setDrawState({ ...drawState, selectedId: null });
-    }
+  const handleContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    setDrawState({ ...initialState });
   };
 
   const handleMouseMove = useCallback(
@@ -256,8 +259,10 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
       if (!canvas || !ctx) return;
       const { x, y } = CanvasUtils.getCanvasPoint(e, canvas);
 
-      const isOnAnnotation = annotations.some((ann) => CanvasUtils.isInAnnotation(ann, x, y, ctx));
+      const isOnAnnotation = annotations.some((ann) => CanvasUtils.isOnAnnotation(ann, x, y, ctx));
+      console.info('isOnAnnotation', isOnAnnotation);
       canvas.style.cursor = isOnAnnotation ? 'move' : 'crosshair';
+      console.info('canvas.style.cursor', canvas.style.cursor);
 
       setDrawState((prev) => {
         const { isDragging, selectedId, currentPos, isDrawing, freehandPath } = prev;
@@ -333,7 +338,7 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
   const clearCanvas = () => {
     saveHistory();
     setAnnotations([]);
-    setDrawState({ ...drawState, selectedId: null });
+    setDrawState({ ...initialState });
   };
 
   useEffect(() => {
@@ -348,8 +353,9 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
   }, [annotations, drawState.isDragging, drawState.isDrawing, drawState.selectedId, drawCanvas]);
 
   useEffect(() => {
-    if (drawState.selectedId && currentTool !== 'freehand') {
-      setDrawState({ ...drawState, selectedId: null });
+    setDrawState({ ...initialState });
+    if (textAreaRef.current?.getText()?.visible) {
+      textAreaRef.current?.setText((text) => ({ ...text, visible: false }));
     }
   }, [currentTool]);
 

@@ -6,6 +6,7 @@
   "homepage": "https://frank17008.github.io/image-annotation/",
   "scripts": {
     "build:lib": "pnpm --filter @frank17008/image-annotation build",
+    "dev:lib": "pnpm --filter @frank17008/image-annotation dev",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",

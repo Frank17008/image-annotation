@@ -14,7 +14,12 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@frank17008/image-annotation": ["packages/image-annotation/src"],
+      "@frank17008/image-annotation/*": ["packages/image-annotation/src/*"]
+    }
   },
   "include": ["src/**/*", "packages/**/*.tsx", "packages/**/*.ts"],
   "exclude": ["node_modules", "**/*.test.ts", "dist", "build"]

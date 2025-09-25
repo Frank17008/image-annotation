@@ -13,7 +13,7 @@ interface TextAnnotationInputProps {
   defaultColor?: string;
 }
 
-interface TextInputState {
+export interface TextInputState {
   visible: boolean;
   position: Point;
   value: string;
@@ -25,22 +25,23 @@ interface TextInputState {
 export interface TextAnnotationInputHandle {
   getText: () => TextInputState;
   setText: React.Dispatch<React.SetStateAction<TextInputState>>;
+  resetText: () => void;
 }
+
+const initialTextState = {
+  visible: false,
+  position: { x: 0, y: 0 },
+  value: '',
+  id: null,
+  width: DEFAULT_WIDTH,
+  height: DEFAULT_HEIGHT,
+};
 
 const TextAnnotationInput = forwardRef<TextAnnotationInputHandle, TextAnnotationInputProps>((props, ref) => {
   const { annotations, ctxRef, canvasRef, defaultColor } = props;
-  const [text, setText] = useState<TextInputState>({
-    visible: false,
-    position: { x: 0, y: 0 },
-    value: '',
-    id: null,
-    width: DEFAULT_WIDTH,
-    height: DEFAULT_HEIGHT,
-  });
-
+  const [text, setText] = useState<TextInputState>(initialTextState);
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const focusTimer = useRef<number | null>(null);
-
   const fontColor = useMemo(() => defaultColor, [defaultColor]);
 
   const initTextDimensions = useCallback(() => {
@@ -66,22 +67,7 @@ const TextAnnotationInput = forwardRef<TextAnnotationInputHandle, TextAnnotation
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       if (!ctxRef.current || !canvasRef.current) return;
       const input = e.target.value;
-      // const lines = input.split('\n');
-      // let totalHeight = 0;
-      // let maxLineWidth = 0;
-
-      // lines.forEach((line) => {
-      //   const metrics = ctxRef.current!.measureText(line);
-      //   maxLineWidth = Math.max(maxLineWidth, metrics.width);
-      //   totalHeight += TEXT_LINE_HEIGHT;
-      // });
-
-      setText((prev) => ({
-        ...prev,
-        value: input,
-        // width: maxLineWidth + 10,
-        // height: Math.min(totalHeight, canvasRef.current!.height - prev.position.y - 10),
-      }));
+      setText((prev) => ({ ...prev, value: input }));
     },
     [ctxRef, canvasRef]
   );
@@ -104,6 +90,7 @@ const TextAnnotationInput = forwardRef<TextAnnotationInputHandle, TextAnnotation
     () => ({
       getText: () => text,
       setText,
+      resetText: () => setText(initialTextState),
     }),
     [text]
   );
