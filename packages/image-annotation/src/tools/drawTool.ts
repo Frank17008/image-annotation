@@ -57,3 +57,12 @@ export const drawText = (ctx: CanvasRenderingContext2D, annotation: TextAnnotati
     yPos += 20;
   }
 };
+
+export const drawControlPoint = (ctx: CanvasRenderingContext2D, x: number, y: number, color1: string = '#FF0000', color2: string = '#FFFFFF'): void => {
+  ctx.fillStyle = color2;
+  ctx.strokeStyle = color1;
+  ctx.beginPath();
+  ctx.arc(x, y, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+};

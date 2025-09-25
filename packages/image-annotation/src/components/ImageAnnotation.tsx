@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import ToolBar from './ToolBar';
 import TextAnnotationInput, { TextAnnotationInputHandle } from './TextAnnotationInput';
-import { drawControlPoint, getBoundingBox } from '../tools/common';
 import * as DrawTools from '../tools/drawTool';
 import * as CanvasUtils from '../utils/canvasUtils';
 import type { Annotation, ToolType } from '../types/annotations';
@@ -159,19 +158,19 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src }) => {
         }
 
         if (ann.id === selectedId && ann.type !== 'freehand' && ann.type !== 'text') {
-          const boundingBox = getBoundingBox(ann, ctx);
+          const boundingBox = CanvasUtils.getBoundingBox(ann, ctx);
           if (ann.type === 'arrow') {
-            drawControlPoint(ctx, ann.x, ann.y);
-            drawControlPoint(ctx, ann.x + ann.width, ann.y + ann.height);
+            DrawTools.drawControlPoint(ctx, ann.x, ann.y);
+            DrawTools.drawControlPoint(ctx, ann.x + ann.width, ann.y + ann.height);
           } else {
             ctx.setLineDash([3, 3]);
             ctx.strokeStyle = '#1890ff';
             ctx.strokeRect(boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height);
             ctx.setLineDash([]);
-            drawControlPoint(ctx, boundingBox.x, boundingBox.y);
-            drawControlPoint(ctx, boundingBox.x + boundingBox.width, boundingBox.y);
-            drawControlPoint(ctx, boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height);
-            drawControlPoint(ctx, boundingBox.x, boundingBox.y + boundingBox.height);
+            DrawTools.drawControlPoint(ctx, boundingBox.x, boundingBox.y);
+            DrawTools.drawControlPoint(ctx, boundingBox.x + boundingBox.width, boundingBox.y);
+            DrawTools.drawControlPoint(ctx, boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height);
+            DrawTools.drawControlPoint(ctx, boundingBox.x, boundingBox.y + boundingBox.height);
           }
         }
       });
