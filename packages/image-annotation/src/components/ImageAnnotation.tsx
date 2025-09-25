@@ -90,24 +90,29 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, onChange }) => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    canvas.width = DEFAULT_WIDTH;
-    canvas.height = DEFAULT_HEIGHT;
     ctxRef.current = canvas.getContext('2d');
     const img = new Image();
     img.crossOrigin = 'Anonymous';
     img.src = src;
     img.onload = () => {
       imageRef.current = img;
+      // 初始化尺寸：让 canvas 充满父容器
+      const container = canvas.parentElement;
+      if (container) {
+        const width = container.clientWidth || DEFAULT_WIDTH;
+        canvas.width = Math.max(1, width);
+        canvas.height = DEFAULT_HEIGHT;
+      }
       drawCanvas();
     };
     const resizeCanvas = () => {
       const container = canvas.parentElement;
-      if (container && imageRef.current) {
-        const ratio = imageRef.current.width / imageRef.current.height;
-        const maxWidth = container.clientWidth;
-        canvas.style.width = `${Math.min(maxWidth, imageRef.current.width)}px`;
-        canvas.style.height = `${Math.min(maxWidth / ratio, imageRef.current.height)}px`;
-      }
+      const imgRef = imageRef.current;
+      if (!container || !imgRef) return;
+      const width = container.clientWidth || canvas.width || DEFAULT_WIDTH;
+      // 设置内部绘制尺寸与 CSS 尺寸一致，避免缩放模糊
+      canvas.width = Math.max(1, width);
+      canvas.height = DEFAULT_HEIGHT;
     };
     window.addEventListener('resize', resizeCanvas);
     return () => window.removeEventListener('resize', resizeCanvas);
@@ -117,7 +122,7 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, onChange }) => {
     const canvas = canvasRef.current;
     const ctx = ctxRef.current;
     if (!canvas || !ctx || !imageRef.current) return;
-    const { ratio, displayWidth, displayHeight, offsetX, offsetY } = CanvasUtils.computeImageFit(imageRef.current.naturalWidth, imageRef.current.naturalHeight, DEFAULT_WIDTH, DEFAULT_HEIGHT);
+    const { ratio, displayWidth, displayHeight, offsetX, offsetY } = CanvasUtils.computeImageFit(imageRef.current.naturalWidth, imageRef.current.naturalHeight, canvas.width, canvas.height);
     ctx.drawImage(imageRef.current, offsetX, offsetY, displayWidth, displayHeight);
     canvas.dataset.scale = `${ratio}`;
     canvas.dataset.offsetX = `${offsetX}`;
