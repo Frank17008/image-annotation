@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, memo, useMemo, useImperativeHandle, forwardRef } from 'react';
-import type { Annotation, TextInputState } from '../types/annotations';
+import type { Annotation, Point } from '../types/annotations';
 import { TEXT_FONT, TEXT_LINE_HEIGHT } from '../utils/canvasUtils';
 import './ImageAnnotation.css';
 
@@ -11,6 +11,15 @@ interface TextAnnotationInputProps {
   ctxRef: React.MutableRefObject<CanvasRenderingContext2D | null>;
   canvasRef: React.MutableRefObject<HTMLCanvasElement | null>;
   defaultColor?: string;
+}
+
+interface TextInputState {
+  visible: boolean;
+  position: Point;
+  value: string;
+  id: string | null;
+  width: number;
+  height: number;
 }
 
 export interface TextAnnotationInputHandle {

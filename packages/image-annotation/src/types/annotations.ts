@@ -55,12 +55,3 @@ export interface ArrowDrawingPayload {
 }
 
 export type ToolType = 'rectangle' | 'circle' | 'arrow' | 'text' | 'freehand' | null;
-
-export interface TextInputState {
-  visible: boolean;
-  position: Point;
-  value: string;
-  id: string | null;
-  width: number;
-  height: number;
-}
