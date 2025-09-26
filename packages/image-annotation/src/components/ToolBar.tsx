@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import './ToolBar.css';
 import { ToolType } from '../types/annotations';
 
@@ -9,16 +9,16 @@ interface ToolBarProps {
   onUndo: () => void;
   onRedo: () => void;
   onExport: () => void;
-  historyLength: number;
-  redoHistoryLength: number;
+  history: { canUndo: boolean; canRedo: boolean };
   strokeColor: string;
   lineWidth: number;
   onColorChange: (color: string) => void;
   onLineWidthChange: (width: number) => void;
 }
 
-const ToolBar: React.FC<ToolBarProps> = (props: ToolBarProps) => {
-  const { currentTool, onSelectTool, onClear, onUndo, onRedo, onExport, historyLength, redoHistoryLength, strokeColor, lineWidth, onColorChange, onLineWidthChange } = props;
+const ToolBar = (props: ToolBarProps) => {
+  const { currentTool, onSelectTool, onClear, onUndo, onRedo, onExport, history, strokeColor, lineWidth, onColorChange, onLineWidthChange } = props;
+
   return (
     <div className="toolbar">
       <div className="brush-controls">
@@ -53,10 +53,10 @@ const ToolBar: React.FC<ToolBarProps> = (props: ToolBarProps) => {
       >
         清除所有
       </button>
-      <button onClick={onUndo} disabled={historyLength === 0} style={{ marginLeft: '10px' }}>
+      <button onClick={onUndo} disabled={!history.canUndo} style={{ marginLeft: '10px' }}>
         上一步 (Ctrl+Z)
       </button>
-      <button onClick={onRedo} disabled={redoHistoryLength === 0} style={{ marginLeft: '10px' }}>
+      <button onClick={onRedo} disabled={!history.canRedo} style={{ marginLeft: '10px' }}>
         下一步 (Ctrl+Y)
       </button>
       <button onClick={onExport} style={{ marginLeft: '10px' }}>
@@ -66,4 +66,4 @@ const ToolBar: React.FC<ToolBarProps> = (props: ToolBarProps) => {
   );
 };
 
-export default ToolBar;
+export default memo(ToolBar);

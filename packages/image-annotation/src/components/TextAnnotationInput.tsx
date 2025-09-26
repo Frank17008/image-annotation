@@ -11,6 +11,7 @@ interface TextAnnotationInputProps {
   ctxRef: React.MutableRefObject<CanvasRenderingContext2D | null>;
   canvasRef: React.MutableRefObject<HTMLCanvasElement | null>;
   defaultColor?: string;
+  updateText?: () => void;
 }
 
 export interface TextInputState {
@@ -38,7 +39,7 @@ const initialTextState = {
 };
 
 const TextAnnotationInput = forwardRef<TextAnnotationInputHandle, TextAnnotationInputProps>((props, ref) => {
-  const { annotations, ctxRef, canvasRef, defaultColor } = props;
+  const { annotations, ctxRef, canvasRef, defaultColor, updateText } = props;
   const [text, setText] = useState<TextInputState>(initialTextState);
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const focusTimer = useRef<number | null>(null);
@@ -81,7 +82,9 @@ const TextAnnotationInput = forwardRef<TextAnnotationInputHandle, TextAnnotation
     }
     if (e.key === 'Enter') {
       e.preventDefault();
-      setText((prev) => ({ ...prev, visible: false, value: prev.value.trim() ? prev.value : '' }));
+      const value = e.currentTarget.value.trim() || '';
+      setText((prev) => ({ ...prev, visible: false, value }));
+      updateText?.();
     }
   }, []);
 
