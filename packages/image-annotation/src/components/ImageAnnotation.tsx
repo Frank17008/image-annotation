@@ -9,10 +9,11 @@ import './ImageAnnotation.css';
 
 interface ImageAnnotationProps {
   src: string;
+  className?: string;
   onChange?: (d: Annotation[]) => void;
 }
 
-const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, onChange }) => {
+const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, className = '', onChange }) => {
   const idRef = useRef(0);
   const nextId = useCallback(() => `${Date.now()}-${idRef.current++}`, []);
 
@@ -160,7 +161,7 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, onChange }) => {
   }, [deleteSelected, handleUndo, handleRedo, currentTool]);
 
   return (
-    <div className="image-annotation">
+    <div className={`image-annotation ${className}`}>
       <ToolBar
         currentTool={currentTool}
         onSelectTool={setCurrentTool}
