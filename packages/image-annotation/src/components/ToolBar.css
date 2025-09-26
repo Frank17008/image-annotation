@@ -1,14 +1,14 @@
 .toolbar {
   display: flex;
   gap: 8px;
-  padding: 12px;
+  padding: 5px;
   background-color: #f5f5f5;
   border-bottom: 1px solid #e8e8e8;
   align-items: center;
 }
 
 .toolbar button {
-  padding: 8px 16px;
+  /* padding: 8px 16px; */
   border: 1px solid #d9d9d9;
   border-radius: 4px;
   background: white;
@@ -36,9 +36,9 @@
 .brush-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-right: 16px;
-  padding: 8px 12px;
+  gap: 4px;
+  margin-right: 10px;
+  /* padding: 8px 12px; */
   background: white;
   border: 1px solid #d9d9d9;
   border-radius: 4px;
@@ -59,7 +59,7 @@
 }
 
 .brush-controls input[type='range'] {
-  width: 80px;
+  width: 60px;
   cursor: pointer;
 }
 

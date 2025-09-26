@@ -65,6 +65,16 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCanvasProp
       const ctx = ctxRef.current;
       if (!canvas || !ctx) return;
 
+      const parent = canvas.parentElement;
+      if (parent) {
+        const desiredWidth = Math.max(1, parent.clientWidth || canvas.width || 1);
+        const desiredHeight = Math.max(1, parent.clientHeight || canvas.height || 1);
+        if (canvas.width !== desiredWidth || canvas.height !== desiredHeight) {
+          canvas.width = desiredWidth;
+          canvas.height = desiredHeight;
+        }
+      }
+
       const { startPos, currentPos, isDrawing, selectedId, freehandPath } = drawStateRef.current;
 
       if (reqAniRef.current) cancelAnimationFrame(reqAniRef.current);
@@ -212,27 +222,8 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCanvasProp
 
       img.onload = () => {
         imageRef.current = img;
-        const container = canvas.parentElement;
-        if (container) {
-          const width = container.clientWidth || DEFAULT_WIDTH;
-          canvas.width = Math.max(1, width);
-          canvas.height = DEFAULT_HEIGHT;
-        }
         drawCanvas();
       };
-
-      const resizeCanvas = () => {
-        const container = canvas.parentElement;
-        const imgRef = imageRef.current;
-        if (!container || !imgRef) return;
-
-        const width = container.clientWidth || canvas.width || DEFAULT_WIDTH;
-        canvas.width = Math.max(1, width);
-        canvas.height = DEFAULT_HEIGHT;
-      };
-
-      window.addEventListener('resize', resizeCanvas);
-      return () => window.removeEventListener('resize', resizeCanvas);
     }, [src]);
 
     // 监听状态变化，重新绘制

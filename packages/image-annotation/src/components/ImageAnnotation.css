@@ -1,7 +1,9 @@
 .image-annotation {
   display: flex;
   flex-direction: column;
+  height: 100%;
   .image-container {
+    flex: 1;
     position: relative;
     display: inline-block;
     border: 1px solid #eee;
