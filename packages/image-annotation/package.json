@@ -1,9 +1,21 @@
 {
   "name": "@frank17008/image-annotation",
   "version": "0.1.0",
-  "description": "React image annotation component",
+  "description": "A modern React image annotation component with beautiful UI and SVG icons",
+  "keywords": [
+    "react",
+    "image annotation component",
+    "canvas",
+    "typescript"
+  ],
+  "author": "FRANK",
   "license": "MIT",
-  "main": "dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/frank17008/image-annotation.git"
+  },
+  "homepage": "https://github.com/frank17008/image-annotation#readme",
+  "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -18,19 +30,24 @@
     "**/*.css"
   ],
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "tsup --env.NODE_ENV production",
     "dev": "tsup --env.NODE_ENV development --watch",
-    "prepublishOnly": "pnpm run build"
+    "prepublishOnly": "pnpm run build",
+    "preview": "pnpm run build && pnpm pack"
   },
   "peerDependencies": {
-    "react": ">=18",
-    "react-dom": ">=18"
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
   },
   "devDependencies": {
     "tsup": "^8.0.1",
     "typescript": "^5.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }

@@ -3,7 +3,13 @@
   "version": "1.0.0",
   "description": "基于React的图片标注工具",
   "main": "src/index.tsx",
-  "homepage": "https://frank17008.github.io/image-annotation/",
+  "author": "FRANK",
+  "license": "MIT",
+  "homepage": "https://frank17008.github.io/image-annotation/#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/frank17008/image-annotation.git"
+  },
   "scripts": {
     "build:lib": "pnpm --filter @frank17008/image-annotation build",
     "dev:lib": "pnpm --filter @frank17008/image-annotation dev",
