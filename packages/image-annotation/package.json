@@ -1,6 +1,6 @@
 {
   "name": "@frank17008/image-annotation",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A modern React image annotation component with beautiful UI and SVG icons",
   "keywords": [
     "react",
@@ -13,6 +13,10 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/frank17008/image-annotation.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   },
   "homepage": "https://frank17008.github.io/image-annotation",
   "main": "dist/index.cjs",
