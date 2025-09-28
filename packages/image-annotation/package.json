@@ -1,6 +1,6 @@
 {
   "name": "@frank17008/image-annotation",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A modern React image annotation component with beautiful UI and SVG icons",
   "keywords": [
     "react",
