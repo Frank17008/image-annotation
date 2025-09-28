@@ -40,6 +40,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build @frank17008/image-annotation
+        run: pnpm build:lib
+
       - name: Build project
         run: pnpm run build
 
