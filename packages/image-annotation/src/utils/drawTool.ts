@@ -58,11 +58,24 @@ export const drawText = (ctx: CanvasRenderingContext2D, annotation: TextAnnotati
   }
 };
 
-export const drawControlPoint = (ctx: CanvasRenderingContext2D, x: number, y: number, color1: string = '#FF0000', color2: string = '#FFFFFF'): void => {
+export const drawControlPoint = (ctx: CanvasRenderingContext2D, x: number, y: number, color1: string = '#1890ff', color2: string = '#FFFFFF'): void => {
+  // 保存当前样式
+  const originalLineWidth = ctx.lineWidth;
+  const originalFillStyle = ctx.fillStyle;
+  const originalStrokeStyle = ctx.strokeStyle;
+
+  // 设置控制点样式 - 固定2px线宽
   ctx.fillStyle = color2;
   ctx.strokeStyle = color1;
+  ctx.lineWidth = 2;
+
   ctx.beginPath();
   ctx.arc(x, y, 5, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+
+  // 恢复原始样式
+  ctx.lineWidth = originalLineWidth;
+  ctx.fillStyle = originalFillStyle;
+  ctx.strokeStyle = originalStrokeStyle;
 };

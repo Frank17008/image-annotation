@@ -122,10 +122,21 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCanvasProp
               DrawTools.drawControlPoint(ctx, ann.x, ann.y);
               DrawTools.drawControlPoint(ctx, ann.x + ann.width, ann.y + ann.height);
             } else {
-              ctx.setLineDash([3, 3]);
+              // 保存当前样式
+              const originalLineWidth = ctx.lineWidth;
+              const originalStrokeStyle = ctx.strokeStyle;
+
+              // 设置虚线样式
+              ctx.setLineDash([5, 5]);
               ctx.strokeStyle = '#1890ff';
+              ctx.lineWidth = 2;
               ctx.strokeRect(boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height);
+
+              // 恢复样式
               ctx.setLineDash([]);
+              ctx.lineWidth = originalLineWidth;
+              ctx.strokeStyle = originalStrokeStyle;
+
               DrawTools.drawControlPoint(ctx, boundingBox.x, boundingBox.y);
               DrawTools.drawControlPoint(ctx, boundingBox.x + boundingBox.width, boundingBox.y);
               DrawTools.drawControlPoint(ctx, boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height);
