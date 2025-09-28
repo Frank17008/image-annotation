@@ -111,7 +111,7 @@ Props：
 - 公共：`id?: string`, `color: string`, `lineWidth?: number`
 - 矩形：`{ type: 'rectangle', x, y, width, height }`
 - 圆：`{ type: 'circle', x, y, radius }`
-- 漏斗：`{ type: 'arrow', x, y, width, height }`（起点为 `x,y`，终点为 `x+width,y+height`）
+- 箭头：`{ type: 'arrow', x, y, width, height }`（起点为 `x,y`，终点为 `x+width,y+height`）
 - 文字：`{ type: 'text', x, y, text }`
 - 自由画笔：`{ type: 'freehand', points: {x,y}[] }`
 

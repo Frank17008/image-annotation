@@ -1,70 +1,221 @@
 .toolbar {
   display: flex;
-  gap: 8px;
-  padding: 5px;
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #e8e8e8;
   align-items: center;
+  gap: 0;
+  padding: 8px 16px;
+  background: #ffffff;
+  border: 1px solid #e8e8e8;
 }
 
-.toolbar button {
-  /* padding: 8px 16px; */
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  background: white;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.toolbar button:hover:not(:disabled) {
-  border-color: #1890ff;
-  color: #1890ff;
+.toolbar-divider {
+  width: 1px;
+  height: 32px;
+  background: #e8e8e8;
+  margin: 0 8px;
 }
 
-.toolbar button.active {
-  background-color: #1890ff;
-  color: white;
-  border-color: #1890ff;
-}
-
-.toolbar button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.brush-controls {
+/* 工具按钮组 */
+.tool-group {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-right: 10px;
-  /* padding: 8px 12px; */
-  background: white;
+  background: #f8f9fa;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+}
+
+.tool-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #666666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tool-button:hover:not(:disabled) {
+  background: #f0f0f0;
+  color: #333333;
+  border-color: #d9d9d9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tool-button.active {
+  background: #1890ff;
+  color: #ffffff;
+  border-color: #1890ff;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+}
+
+.tool-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+/* 画笔控制区域 */
+.brush-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8f9fa;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-icon {
+  color: #666666;
+}
+
+.color-picker {
+  width: 28px;
+  height: 28px;
   border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+  overflow: hidden;
+}
+
+.color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-picker::-webkit-color-swatch {
+  border: none;
   border-radius: 4px;
 }
 
-.brush-controls label {
-  font-size: 14px;
-  color: #666;
-  white-space: nowrap;
-}
-
-.brush-controls input[type='color'] {
-  width: 32px;
-  height: 32px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
+.width-slider {
+  width: 80px;
+  height: 4px;
+  border-radius: 2px;
+  background: #e8e8e8;
+  outline: none;
   cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-.brush-controls input[type='range'] {
-  width: 60px;
+.width-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #1890ff;
   cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.brush-controls span {
+.width-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #1890ff;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.width-value {
   font-size: 12px;
-  color: #666;
-  min-width: 30px;
+  color: #666666;
+  font-weight: 500;
+  min-width: 32px;
+  text-align: center;
+}
+
+/* 操作按钮组 */
+.action-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #f8f9fa;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #666666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-button:hover:not(:disabled) {
+  background: #f0f0f0;
+  color: #333333;
+  border-color: #d9d9d9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.clear-button:hover:not(:disabled) {
+  background: #ff4d4f;
+  color: white;
+  border-color: #ff4d4f;
+}
+
+.export-button:hover:not(:disabled) {
+  background: #52c41a;
+  color: white;
+  border-color: #52c41a;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .toolbar {
+    padding: 8px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .toolbar-section {
+    gap: 4px;
+  }
+
+  .toolbar-divider {
+    display: none;
+  }
+
+  .brush-controls {
+    gap: 8px;
+    padding: 6px 8px;
+  }
+
+  .width-slider {
+    width: 60px;
+  }
 }
