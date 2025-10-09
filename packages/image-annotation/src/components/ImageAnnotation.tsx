@@ -14,9 +14,6 @@ interface ImageAnnotationProps {
 }
 
 const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, className = '', onChange }) => {
-  const idRef = useRef(0);
-  const nextId = useCallback(() => `${Date.now()}-${idRef.current++}`, []);
-
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [currentTool, setCurrentTool] = useState<ToolType>(null);
   const [strokeColor, setStrokeColor] = useState<string>('#FF0000');
@@ -105,12 +102,12 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, className = '', 
         !clickedAnnotation && textAreaRef.current?.setText((prev) => ({ ...prev, visible: true, position: { x, y } }));
       }
     },
-    [currentTool, annotations, strokeColor, saveHistory, nextId]
+    [currentTool, annotations]
   );
 
   const updateText = () => {
     const text = textAreaRef.current?.getText() as TextInputState;
-    const id = text.id || nextId();
+    const id = text.id || `${Date.now()}`;
     // 更新标注后重绘canvas
     setAnnotations((prev) => [
       ...prev,

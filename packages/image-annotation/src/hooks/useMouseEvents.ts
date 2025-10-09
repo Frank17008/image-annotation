@@ -117,7 +117,7 @@ export function useMouseEvents({
     if (CanvasUtils.shouldCommitShape(currentTool, width, height)) {
       onSaveHistory();
       const newAnnotation = CanvasUtils.createNewAnnotation({
-        id: `${Date.now()}-${Math.random()}`,
+        id: `${Date.now()}`,
         tool: currentTool,
         startX: startPos.x,
         startY: startPos.y,

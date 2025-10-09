@@ -23,9 +23,6 @@ export interface AnnotationCanvasHandle {
   redraw: () => void;
 }
 
-const DEFAULT_WIDTH = 800;
-const DEFAULT_HEIGHT = 600;
-
 const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCanvasProps>(
   ({ src, annotations, drawState, currentTool, strokeColor, lineWidth, onMouseDown, onMouseMove, onMouseUp, onContextMenu }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
