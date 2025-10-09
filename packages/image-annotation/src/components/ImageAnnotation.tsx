@@ -14,8 +14,8 @@ interface ImageAnnotationProps {
   value?: Annotation[];
 }
 
-const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value = [], className = '', onChange }) => {
-  const [annotations, setAnnotations] = useState<Annotation[]>(value);
+const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value, className = '', onChange }) => {
+  const [annotations, setAnnotations] = useState<Annotation[]>(value || []);
   const [currentTool, setCurrentTool] = useState<ToolType>(null);
   const [strokeColor, setStrokeColor] = useState<string>('#FF0000');
   const [lineWidth, setLineWidth] = useState<number>(2);
