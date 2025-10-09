@@ -66,7 +66,7 @@ export function useMouseEvents({
 
       canvas.style.cursor = isOnAnnotation ? 'move' : 'crosshair';
 
-      const { isDragging, selectedId, currentPos, isDrawing } = drawState;
+      const { isDragging, selectedId, isDrawing } = drawState;
 
       if (isDragging && selectedId) {
         const last = dragLastPosRef.current || { x, y };

@@ -184,13 +184,13 @@ export function createNewAnnotation(params: {
   freehandPath: Array<{ x: number; y: number }>;
 }): any {
   const { id, tool, startX, startY, width, height, color, lineWidth, freehandPath } = params;
-  const common = { id, type: tool, x: startX, y: startY, width, height, color, lineWidth } as any;
+  const common = { id, type: tool, color, lineWidth };
   if (tool === 'freehand') {
     return { ...common, points: [...freehandPath] };
   }
   if (tool === 'circle') {
     const radius = Math.sqrt(width ** 2 + height ** 2);
-    return { ...common, radius };
+    return { ...common, x: startX, y: startY, radius };
   }
-  return common;
+  return { ...common, x: startX, y: startY, width, height };
 }
