@@ -11,10 +11,11 @@ interface ImageAnnotationProps {
   src: string;
   className?: string;
   onChange?: (d: Annotation[]) => void;
+  value?: Annotation[];
 }
 
-const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, className = '', onChange }) => {
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value = [], className = '', onChange }) => {
+  const [annotations, setAnnotations] = useState<Annotation[]>(value);
   const [currentTool, setCurrentTool] = useState<ToolType>(null);
   const [strokeColor, setStrokeColor] = useState<string>('#FF0000');
   const [lineWidth, setLineWidth] = useState<number>(2);
@@ -45,6 +46,19 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, className = '', 
     const canvas = canvasRef.current?.getCanvas();
     if (!canvas) return;
     CanvasUtils.download(canvas);
+  };
+
+  const onColorChanged = (color: string) => {
+    setStrokeColor(color);
+    if (drawState.selectedId) {
+      setAnnotations((prev) => prev.map((a) => (a.id === drawState.selectedId ? { ...a, color } : a)));
+    }
+  };
+  const onLineWidthChanged = (lineWidth: number) => {
+    setLineWidth(lineWidth);
+    if (drawState.selectedId) {
+      setAnnotations((prev) => prev.map((a) => (a.id === drawState.selectedId ? { ...a, lineWidth } : a)));
+    }
   };
 
   const handleUndo = () => {
@@ -127,6 +141,11 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, className = '', 
   useEffect(() => {
     onChange?.(annotations);
   }, [annotations, onChange]);
+  useEffect(() => {
+    if (Array.isArray(value)) {
+      setAnnotations(value);
+    }
+  }, [value]);
 
   useEffect(() => {
     resetDrawState();
@@ -157,13 +176,6 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, className = '', 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [deleteSelected, handleUndo, handleRedo, currentTool]);
 
-  // 修改选中标注的颜色和线宽
-  useEffect(() => {
-    if (drawState.selectedId) {
-      setAnnotations((prev) => prev.map((a) => (a.id === drawState.selectedId ? { ...a, color: strokeColor, lineWidth } : a)));
-    }
-  }, [strokeColor, lineWidth, drawState.selectedId]);
-
   return (
     <div className={`image-annotation ${className}`}>
       <ToolBar
@@ -176,8 +188,8 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, className = '', 
         history={{ canRedo, canUndo }}
         strokeColor={strokeColor}
         lineWidth={lineWidth}
-        onColorChange={setStrokeColor}
-        onLineWidthChange={setLineWidth}
+        onColorChange={onColorChanged}
+        onLineWidthChange={onLineWidthChanged}
       />
       <div className="image-container">
         <AnnotationCanvas
