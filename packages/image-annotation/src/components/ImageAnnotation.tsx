@@ -160,6 +160,13 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, className = '', 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [deleteSelected, handleUndo, handleRedo, currentTool]);
 
+  // 修改选中标注的颜色和线宽
+  useEffect(() => {
+    if (drawState.selectedId) {
+      setAnnotations((prev) => prev.map((a) => (a.id === drawState.selectedId ? { ...a, color: strokeColor, lineWidth } : a)));
+    }
+  }, [strokeColor, lineWidth, drawState.selectedId]);
+
   return (
     <div className={`image-annotation ${className}`}>
       <ToolBar
