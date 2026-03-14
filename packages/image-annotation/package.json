@@ -41,7 +41,8 @@
     "build": "tsup --env.NODE_ENV production",
     "dev": "tsup --env.NODE_ENV development --watch",
     "prepublishOnly": "pnpm run build",
-    "preview": "pnpm run build && pnpm pack"
+    "preview": "pnpm run build && pnpm pack",
+    "publish": "npm publish"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
