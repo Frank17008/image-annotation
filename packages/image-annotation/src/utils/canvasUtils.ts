@@ -1,17 +1,35 @@
-import type { Annotation, ToolType } from '../types/annotations';
+import type { Annotation, CircleAnnotation, ArrowAnnotation, RectangleAnnotation, ToolType } from '../types/annotations';
+import type { Point } from '../types/annotations';
+
+export interface ViewportTransform {
+  scale: number;
+  translateX: number;
+  translateY: number;
+}
 
 export const TEXT_FONT: string = '16px Arial';
 export const TEXT_LINE_HEIGHT: number = 20;
 
-export const measureMultilineText = (ctx: CanvasRenderingContext2D, text: string) => {
-  ctx.font = TEXT_FONT;
+export function getWorldTextFont(viewportScale: number) {
+  const safeScale = viewportScale > 0 ? viewportScale : 1;
+  return `${16 / safeScale}px Arial`;
+}
+
+export function getWorldTextLineHeight(viewportScale: number) {
+  const safeScale = viewportScale > 0 ? viewportScale : 1;
+  return 20 / safeScale;
+}
+
+export const measureMultilineText = (ctx: CanvasRenderingContext2D, text: string, viewportScale: number = 1) => {
+  ctx.font = viewportScale === 1 ? TEXT_FONT : getWorldTextFont(viewportScale);
   const lines = text.split('\n');
   let maxWidth = 0;
   for (let i = 0; i < lines.length; i++) {
     const metrics = ctx.measureText(lines[i]);
     maxWidth = Math.max(maxWidth, metrics.width);
   }
-  return { width: maxWidth, height: lines.length * TEXT_LINE_HEIGHT };
+  const lineHeight = viewportScale === 1 ? TEXT_LINE_HEIGHT : getWorldTextLineHeight(viewportScale);
+  return { width: maxWidth, height: lines.length * lineHeight };
 };
 
 export const getCanvasPoint = (e: React.MouseEvent, canvas: HTMLCanvasElement) => {
@@ -19,14 +37,62 @@ export const getCanvasPoint = (e: React.MouseEvent, canvas: HTMLCanvasElement) =
   return { x: e.clientX - rect.left, y: e.clientY - rect.top };
 };
 
-export const getBoundingBox = (ann: Annotation, ctx: CanvasRenderingContext2D) => {
+export function screenToWorld(point: Point, viewport: ViewportTransform): Point {
+  const { scale, translateX, translateY } = viewport;
+  const safeScale = scale || 1;
+  return {
+    x: (point.x - translateX) / safeScale,
+    y: (point.y - translateY) / safeScale,
+  };
+}
+
+export function worldToScreen(point: Point, viewport: ViewportTransform): Point {
+  const { scale, translateX, translateY } = viewport;
+  return {
+    x: point.x * scale + translateX,
+    y: point.y * scale + translateY,
+  };
+}
+
+export function clampNumber(value: number, min: number, max: number) {
+  if (Number.isNaN(value)) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
+export function getRectRotatedCorners(ann: RectangleAnnotation): { x: number; y: number }[] {
+  const rot = ann.rotation ?? 0;
+  const cx = ann.x + ann.width / 2;
+  const cy = ann.y + ann.height / 2;
+  const hw = ann.width / 2;
+  const hh = ann.height / 2;
+  const corners = [
+    { x: -hw, y: -hh },
+    { x: hw, y: -hh },
+    { x: hw, y: hh },
+    { x: -hw, y: hh },
+  ];
+  const cos = Math.cos(rot);
+  const sin = Math.sin(rot);
+  return corners.map((p) => ({
+    x: cx + p.x * cos - p.y * sin,
+    y: cy + p.x * sin + p.y * cos,
+  }));
+}
+
+export const getBoundingBox = (ann: Annotation, ctx: CanvasRenderingContext2D, viewportScale: number = 1) => {
   if (ann.type === 'rectangle') {
-    return {
-      x: ann.x,
-      y: ann.y,
-      width: ann.width,
-      height: ann.height,
-    };
+    const rot = ann.rotation ?? 0;
+    if (Math.abs(rot) < 1e-6) {
+      return { x: ann.x, y: ann.y, width: ann.width, height: ann.height };
+    }
+    const corners = getRectRotatedCorners(ann);
+    const xs = corners.map((c) => c.x);
+    const ys = corners.map((c) => c.y);
+    const minX = Math.min(...xs);
+    const minY = Math.min(...ys);
+    const maxX = Math.max(...xs);
+    const maxY = Math.max(...ys);
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   } else if (ann.type === 'circle') {
     return {
       x: ann.x - ann.radius,
@@ -35,10 +101,10 @@ export const getBoundingBox = (ann: Annotation, ctx: CanvasRenderingContext2D) =
       height: ann.radius * 2,
     };
   } else if (ann.type === 'arrow') {
-    const minX = Math.min(ann.x, ann.x + ann.width);
-    const minY = Math.min(ann.y, ann.y + ann.height);
-    const maxX = Math.max(ann.x, ann.x + ann.width);
-    const maxY = Math.max(ann.y, ann.y + ann.height);
+    const minX = Math.min(ann.x, ann.toX);
+    const minY = Math.min(ann.y, ann.toY);
+    const maxX = Math.max(ann.x, ann.toX);
+    const maxY = Math.max(ann.y, ann.toY);
     return {
       x: minX,
       y: minY,
@@ -46,10 +112,11 @@ export const getBoundingBox = (ann: Annotation, ctx: CanvasRenderingContext2D) =
       height: maxY - minY,
     };
   } else if (ann.type === 'text') {
-    const { width: maxWidth, height: totalHeight } = measureMultilineText(ctx, ann.text);
+    const { width: maxWidth, height: totalHeight } = measureMultilineText(ctx, ann.text, viewportScale);
+    const lineHeight = viewportScale === 1 ? TEXT_LINE_HEIGHT : getWorldTextLineHeight(viewportScale);
     return {
       x: ann.x,
-      y: ann.y - TEXT_LINE_HEIGHT,
+      y: ann.y - lineHeight,
       width: maxWidth,
       height: totalHeight,
     };
@@ -57,15 +124,68 @@ export const getBoundingBox = (ann: Annotation, ctx: CanvasRenderingContext2D) =
   return { x: 0, y: 0, width: 0, height: 0 };
 };
 
-export const isInControlPoint = (ann: Annotation, x: number, y: number, ctx: CanvasRenderingContext2D) => {
-  if (ann.type === 'freehand') return false;
-  const boundingBox = getBoundingBox(ann, ctx);
-  return (
-    (Math.abs(x - boundingBox.x) < 6 && Math.abs(y - boundingBox.y) < 6) ||
-    (Math.abs(x - (boundingBox.x + boundingBox.width)) < 6 && Math.abs(y - boundingBox.y) < 6) ||
-    (Math.abs(x - (boundingBox.x + boundingBox.width)) < 6 && Math.abs(y - (boundingBox.y + boundingBox.height)) < 6) ||
-    (Math.abs(x - boundingBox.x) < 6 && Math.abs(y - (boundingBox.y + boundingBox.height)) < 6)
-  );
+const HANDLE_HIT_RADIUS = 8;
+
+export interface EditHandleHit {
+  type: 'resize' | 'rotate';
+  index?: number;
+  corner?: 'nw' | 'ne' | 'sw' | 'se';
+}
+
+/** 检测点击是否命中可编辑图形（矩形/圆/箭头）的手柄，返回 resize/rotate 及索引 */
+export function hitTestEditHandle(
+  ann: Annotation,
+  x: number,
+  y: number,
+  ctx: CanvasRenderingContext2D,
+  viewportScale: number = 1
+): EditHandleHit | null {
+  if (ann.type === 'freehand' || ann.type === 'text') return null;
+
+  const hit = (px: number, py: number) => {
+    const d = Math.sqrt((x - px) ** 2 + (y - py) ** 2);
+    return d < HANDLE_HIT_RADIUS;
+  };
+
+  if (ann.type === 'rectangle') {
+    const rot = ann.rotation ?? 0;
+    const cx = ann.x + ann.width / 2;
+    const cy = ann.y + ann.height / 2;
+    const offset = 20;
+    const rotHandleX = cx - Math.sin(rot) * offset;
+    const rotHandleY = cy + Math.cos(rot) * offset;
+    if (hit(rotHandleX, rotHandleY)) return { type: 'rotate' };
+    const corners = getRectRotatedCorners(ann);
+    const cornerNames: Array<'nw' | 'ne' | 'se' | 'sw'> = ['nw', 'ne', 'se', 'sw'];
+    for (let i = 0; i < 4; i++) {
+      if (hit(corners[i].x, corners[i].y)) return { type: 'resize', index: i, corner: cornerNames[i] };
+    }
+    return null;
+  }
+
+  if (ann.type === 'circle') {
+    const r = ann.radius;
+    const resizeX = ann.x + r;
+    const resizeY = ann.y;
+    if (hit(resizeX, resizeY)) return { type: 'resize', index: 0 };
+    return null;
+  }
+
+  if (ann.type === 'arrow') {
+    const startX = ann.x;
+    const startY = ann.y;
+    const endX = ann.toX;
+    const endY = ann.toY;
+    if (hit(startX, startY)) return { type: 'resize', index: 0 };
+    if (hit(endX, endY)) return { type: 'resize', index: 1 };
+    return null;
+  }
+
+  return null;
+}
+
+export const isInControlPoint = (ann: Annotation, x: number, y: number, ctx: CanvasRenderingContext2D, viewportScale: number = 1) => {
+  return hitTestEditHandle(ann, x, y, ctx, viewportScale) !== null;
 };
 
 export const isPointNearLine = (x: number, y: number, x1: number, y1: number, x2: number, y2: number, threshold: number = 6) => {
@@ -93,8 +213,19 @@ export const isPointNearLine = (x: number, y: number, x1: number, y1: number, x2
   return Math.sqrt(dx * dx + dy * dy) < threshold;
 };
 
-export const isOnAnnotation = (ann: Annotation, x: number, y: number, ctx: CanvasRenderingContext2D) => {
+export const isOnAnnotation = (ann: Annotation, x: number, y: number, ctx: CanvasRenderingContext2D, viewportScale: number = 1) => {
   if (ann.type === 'rectangle') {
+    const rot = (ann as RectangleAnnotation).rotation ?? 0;
+    if (Math.abs(rot) >= 1e-6) {
+      const corners = getRectRotatedCorners(ann as RectangleAnnotation);
+      const threshold = 6;
+      for (let i = 0; i < 4; i++) {
+        const p1 = corners[i];
+        const p2 = corners[(i + 1) % 4];
+        if (isPointNearLine(x, y, p1.x, p1.y, p2.x, p2.y, threshold)) return true;
+      }
+      return false;
+    }
     const lineWidth = 2;
     return (
       (Math.abs(x - ann.x) <= lineWidth && y >= ann.y && y <= ann.y + ann.height) ||
@@ -106,9 +237,9 @@ export const isOnAnnotation = (ann: Annotation, x: number, y: number, ctx: Canva
     const distance = Math.sqrt((x - ann.x) ** 2 + (y - ann.y) ** 2);
     return Math.abs(distance - ann.radius) <= 2;
   } else if (ann.type === 'arrow') {
-    return isPointNearLine(x, y, ann.x, ann.y, ann.x + ann.width, ann.y + ann.height);
+    return isPointNearLine(x, y, ann.x, ann.y, ann.toX, ann.toY);
   } else if (ann.type === 'text') {
-    const boundingBox = getBoundingBox(ann, ctx);
+    const boundingBox = getBoundingBox(ann, ctx, viewportScale);
     return x >= boundingBox.x && x <= boundingBox.x + boundingBox.width && y >= boundingBox.y && y <= boundingBox.y + boundingBox.height;
   } else if (ann.type === 'freehand') {
     for (let i = 0; i < ann.points.length - 1; i++) {
@@ -172,6 +303,106 @@ export function shouldCommitShape(tool: ToolType, width: number, height: number)
   return Math.abs(width) > 3 || Math.abs(height) > 3;
 }
 
+const MIN_SIZE = 5;
+
+/** 世界坐标转矩形局部坐标（相对于中心） */
+function worldToRectLocal(px: number, py: number, ann: RectangleAnnotation): { x: number; y: number } {
+  const cx = ann.x + ann.width / 2;
+  const cy = ann.y + ann.height / 2;
+  const rot = ann.rotation ?? 0;
+  const cos = Math.cos(-rot);
+  const sin = Math.sin(-rot);
+  const dx = px - cx;
+  const dy = py - cy;
+  return { x: dx * cos - dy * sin, y: dx * sin + dy * cos };
+}
+
+/** 根据矩形角点拖动更新矩形（固定对角不变），支持旋转 */
+export function applyRectResize(
+  ann: RectangleAnnotation,
+  handleIndex: number,
+  newX: number,
+  newY: number
+): RectangleAnnotation {
+  const rot = ann.rotation ?? 0;
+  const { width: w, height: h } = ann;
+  const cx = ann.x + w / 2;
+  const cy = ann.y + h / 2;
+
+  const local = worldToRectLocal(newX, newY, ann);
+  const hw = w / 2;
+  const hh = h / 2;
+
+  let nw = w;
+  let nh = h;
+  let newCx = cx;
+  let newCy = cy;
+
+  if (handleIndex === 0) {
+    nw = hw - local.x;
+    nh = hh - local.y;
+    if (nw >= MIN_SIZE && nh >= MIN_SIZE) {
+      newCx = cx + (local.x + hw) / 2 * Math.cos(rot) - (local.y + hh) / 2 * Math.sin(rot);
+      newCy = cy + (local.x + hw) / 2 * Math.sin(rot) + (local.y + hh) / 2 * Math.cos(rot);
+      return { ...ann, x: newCx - nw / 2, y: newCy - nh / 2, width: nw, height: nh };
+    }
+  } else if (handleIndex === 1) {
+    nw = local.x - (-hw);
+    nh = hh - local.y;
+    if (nw >= MIN_SIZE && nh >= MIN_SIZE) {
+      newCx = cx + (local.x - hw) / 2 * Math.cos(rot) - (local.y + hh) / 2 * Math.sin(rot);
+      newCy = cy + (local.x - hw) / 2 * Math.sin(rot) + (local.y + hh) / 2 * Math.cos(rot);
+      return { ...ann, x: newCx - nw / 2, y: newCy - nh / 2, width: nw, height: nh };
+    }
+  } else if (handleIndex === 2) {
+    nw = local.x + hw;
+    nh = local.y + hh;
+    if (nw >= MIN_SIZE && nh >= MIN_SIZE) {
+      newCx = cx + (local.x - hw) / 2 * Math.cos(rot) - (local.y - hh) / 2 * Math.sin(rot);
+      newCy = cy + (local.x - hw) / 2 * Math.sin(rot) + (local.y - hh) / 2 * Math.cos(rot);
+      return { ...ann, x: newCx - nw / 2, y: newCy - nh / 2, width: nw, height: nh };
+    }
+  } else if (handleIndex === 3) {
+    nw = hw - local.x;
+    nh = local.y + hh;
+    if (nw >= MIN_SIZE && nh >= MIN_SIZE) {
+      newCx = cx + (local.x + hw) / 2 * Math.cos(rot) - (local.y - hh) / 2 * Math.sin(rot);
+      newCy = cy + (local.x + hw) / 2 * Math.sin(rot) + (local.y - hh) / 2 * Math.cos(rot);
+      return { ...ann, x: newCx - nw / 2, y: newCy - nh / 2, width: nw, height: nh };
+    }
+  }
+  return ann;
+}
+
+/** 根据圆周上的拖拽更新圆的半径 */
+export function applyCircleResize(ann: CircleAnnotation, newX: number, newY: number): CircleAnnotation {
+  const r = Math.sqrt((newX - ann.x) ** 2 + (newY - ann.y) ** 2);
+  if (r < MIN_SIZE) return ann;
+  return { ...ann, radius: r };
+}
+
+/** 根据箭头端点拖拽更新箭头 */
+export function applyArrowResize(ann: ArrowAnnotation, handleIndex: number, newX: number, newY: number): ArrowAnnotation {
+  if (handleIndex === 0) {
+    return { ...ann, x: newX, y: newY };
+  }
+  return { ...ann, toX: newX, toY: newY };
+}
+
+/** 矩形绕中心旋转，deltaAngle 为相对初始的增量弧度 */
+export function applyRectRotate(ann: RectangleAnnotation, deltaAngle: number): RectangleAnnotation {
+  return { ...ann, rotation: (ann.rotation ?? 0) + deltaAngle };
+}
+
+/** 箭头绕中点旋转，deltaAngle 为弧度增量，保持长度不变 */
+export function applyArrowRotate(ann: ArrowAnnotation, deltaAngle: number): ArrowAnnotation {
+  const len = Math.sqrt((ann.toX - ann.x) ** 2 + (ann.toY - ann.y) ** 2);
+  if (len < 1) return ann;
+  const curAngle = Math.atan2(ann.toY - ann.y, ann.toX - ann.x);
+  const newAngle = curAngle + deltaAngle;
+  return { ...ann, toX: ann.x + len * Math.cos(newAngle), toY: ann.y + len * Math.sin(newAngle) };
+}
+
 export function createNewAnnotation(params: {
   id: string;
   tool: ToolType;
@@ -191,6 +422,9 @@ export function createNewAnnotation(params: {
   if (tool === 'circle') {
     const radius = Math.sqrt(width ** 2 + height ** 2);
     return { ...common, x: startX, y: startY, radius };
+  }
+  if (tool === 'arrow') {
+    return { ...common, x: startX, y: startY, toX: startX + width, toY: startY + height };
   }
   return { ...common, x: startX, y: startY, width, height };
 }

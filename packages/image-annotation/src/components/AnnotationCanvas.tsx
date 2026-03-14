@@ -11,6 +11,7 @@ interface AnnotationCanvasProps {
   currentTool: ToolType;
   strokeColor: string;
   lineWidth: number;
+  viewport: CanvasUtils.ViewportTransform;
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onContextMenu: (e: React.MouseEvent<HTMLCanvasElement>) => void;
@@ -24,7 +25,7 @@ export interface AnnotationCanvasHandle {
 }
 
 const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCanvasProps>(
-  ({ src, annotations, drawState, currentTool, strokeColor, lineWidth, onMouseDown, onMouseMove, onMouseUp, onContextMenu }, ref) => {
+  ({ src, annotations, drawState, currentTool, strokeColor, lineWidth, viewport, onMouseDown, onMouseMove, onMouseUp, onContextMenu }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const imageRef = useRef<HTMLImageElement | null>(null);
     const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -36,6 +37,7 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCanvasProp
     const currentToolRef = useRef(currentTool);
     const strokeColorRef = useRef(strokeColor);
     const lineWidthRef = useRef(lineWidth);
+    const viewportRef = useRef(viewport);
 
     // 更新 ref 值
     annotationsRef.current = annotations;
@@ -43,6 +45,7 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCanvasProp
     currentToolRef.current = currentTool;
     strokeColorRef.current = strokeColor;
     lineWidthRef.current = lineWidth;
+    viewportRef.current = viewport;
 
     const drawImage = useCallback(() => {
       const canvas = canvasRef.current;
@@ -73,11 +76,17 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCanvasProp
       }
 
       const { startPos, currentPos, isDrawing, selectedId, freehandPath } = drawStateRef.current;
+      const { scale, translateX, translateY } = viewportRef.current;
 
       if (reqAniRef.current) cancelAnimationFrame(reqAniRef.current);
 
       reqAniRef.current = requestAnimationFrame(() => {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.translate(translateX, translateY);
+        ctx.scale(scale, scale);
         drawImage();
 
         // 绘制已保存的注释
@@ -95,15 +104,15 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCanvasProp
                 {
                   fromX: ann.x,
                   fromY: ann.y,
-                  toX: ann.x + ann.width,
-                  toY: ann.y + ann.height,
+                  toX: ann.toX,
+                  toY: ann.toY,
                   color: ann.color,
                 },
                 ann.lineWidth || lineWidthRef.current
               );
               break;
             case 'text':
-              DrawTools.drawText(ctx, ann);
+              DrawTools.drawText(ctx, ann, scale);
               break;
             case 'freehand':
               DrawTools.drawFreehand(ctx, ann, ann.lineWidth || lineWidthRef.current);
@@ -112,33 +121,44 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCanvasProp
               break;
           }
 
-          // 绘制选中状态的控制点
+          // 绘制选中状态的控制点（resize + rotate）
           if (ann.id === selectedId && ann.type !== 'freehand' && ann.type !== 'text') {
-            const boundingBox = CanvasUtils.getBoundingBox(ann, ctx);
-            if (ann.type === 'arrow') {
-              DrawTools.drawControlPoint(ctx, ann.x, ann.y);
-              DrawTools.drawControlPoint(ctx, ann.x + ann.width, ann.y + ann.height);
-            } else {
-              // 保存当前样式
-              const originalLineWidth = ctx.lineWidth;
-              const originalStrokeStyle = ctx.strokeStyle;
+            const boundingBox = CanvasUtils.getBoundingBox(ann, ctx, scale);
+            const originalLineWidth = ctx.lineWidth;
+            const originalStrokeStyle = ctx.strokeStyle;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = '#888888';
+            ctx.lineWidth = 2;
 
-              // 设置虚线样式
-              ctx.setLineDash([5, 5]);
-              ctx.strokeStyle = '#1890ff';
-              ctx.lineWidth = 2;
-              ctx.strokeRect(boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height);
-
-              // 恢复样式
-              ctx.setLineDash([]);
-              ctx.lineWidth = originalLineWidth;
-              ctx.strokeStyle = originalStrokeStyle;
-
-              DrawTools.drawControlPoint(ctx, boundingBox.x, boundingBox.y);
-              DrawTools.drawControlPoint(ctx, boundingBox.x + boundingBox.width, boundingBox.y);
-              DrawTools.drawControlPoint(ctx, boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height);
-              DrawTools.drawControlPoint(ctx, boundingBox.x, boundingBox.y + boundingBox.height);
+            if (ann.type === 'rectangle') {
+              const corners = CanvasUtils.getRectRotatedCorners(ann);
+              ctx.beginPath();
+              ctx.moveTo(corners[0].x, corners[0].y);
+              corners.forEach((c: { x: number; y: number }, i: number) => {
+                if (i > 0) ctx.lineTo(c.x, c.y);
+              });
+              ctx.closePath();
+              ctx.stroke();
+              corners.forEach((c: { x: number; y: number }) => DrawTools.drawControlPoint(ctx, c.x, c.y, '#888888'));
+              const rot = (ann as any).rotation ?? 0;
+              const cx = ann.x + ann.width / 2;
+              const cy = ann.y + ann.height / 2;
+              const rx = cx - Math.sin(rot) * 20;
+              const ry = cy + Math.cos(rot) * 20;
+              DrawTools.drawControlPoint(ctx, rx, ry, '#888888');
+            } else if (ann.type === 'circle') {
+              ctx.beginPath();
+              ctx.arc(ann.x, ann.y, ann.radius, 0, Math.PI * 2);
+              ctx.stroke();
+              DrawTools.drawControlPoint(ctx, ann.x + ann.radius, ann.y, '#888888');
+            } else if (ann.type === 'arrow') {
+              DrawTools.drawControlPoint(ctx, ann.x, ann.y, '#888888');
+              DrawTools.drawControlPoint(ctx, ann.toX, ann.toY, '#888888');
             }
+
+            ctx.setLineDash([]);
+            ctx.lineWidth = originalLineWidth;
+            ctx.strokeStyle = originalStrokeStyle;
           }
         });
 
@@ -205,6 +225,7 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCanvasProp
               break;
           }
         }
+        ctx.restore();
       });
     }, [drawImage]);
 
@@ -237,7 +258,7 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCanvasProp
     // 监听状态变化，重新绘制
     useEffect(() => {
       drawCanvas();
-    }, [annotations, drawState, currentTool, strokeColor, lineWidth]);
+    }, [annotations, drawState, currentTool, strokeColor, lineWidth, viewport]);
 
     return <canvas ref={canvasRef} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onContextMenu={onContextMenu} />;
   }

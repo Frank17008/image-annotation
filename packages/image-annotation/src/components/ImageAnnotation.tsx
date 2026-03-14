@@ -18,13 +18,43 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value, className
   const [annotations, setAnnotations] = useState<Annotation[]>(value || []);
   const [currentTool, setCurrentTool] = useState<ToolType>(null);
   const [strokeColor, setStrokeColor] = useState<string>('#FF0000');
-  const [lineWidth, setLineWidth] = useState<number>(2);
+  const [lineWidth, setLineWidth] = useState<number>(4);
+  const [viewport, setViewport] = useState<CanvasUtils.ViewportTransform>({ scale: 1, translateX: 0, translateY: 0 });
+  const [isSpacePanning, setIsSpacePanning] = useState(false);
 
   const textAreaRef = useRef<TextAnnotationInputHandle | null>(null);
   const canvasRef = useRef<AnnotationCanvasHandle | null>(null);
 
   const { drawState, startDrawing, updateCurrentPos, finishDrawing, resetDrawState } = useDrawState();
   const { saveHistory, undo, redo, canUndo, canRedo } = useHistory(annotations);
+
+  const zoomAt = useCallback(
+    (screenX: number, screenY: number, nextScale: number) => {
+      setViewport((prev) => {
+        const scale = CanvasUtils.clampNumber(nextScale, 0.25, 4);
+        const worldX = (screenX - prev.translateX) / prev.scale;
+        const worldY = (screenY - prev.translateY) / prev.scale;
+        return {
+          scale,
+          translateX: screenX - worldX * scale,
+          translateY: screenY - worldY * scale,
+        };
+      });
+    },
+    [setViewport]
+  );
+
+  const zoomBy = useCallback(
+    (factor: number) => {
+      const canvas = canvasRef.current?.getCanvas();
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      zoomAt(cx, cy, viewport.scale * factor);
+    },
+    [viewport.scale, zoomAt]
+  );
 
   // 鼠标事件处理
   const mouseEvents = useMouseEvents({
@@ -33,6 +63,9 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value, className
     drawState,
     strokeColor,
     lineWidth,
+    viewport,
+    onUpdateViewport: setViewport,
+    isSpacePanning,
     onStartDrawing: startDrawing,
     onUpdateCurrentPos: updateCurrentPos,
     onFinishDrawing: finishDrawing,
@@ -60,6 +93,9 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value, className
       setAnnotations((prev) => prev.map((a) => (a.id === drawState.selectedId ? { ...a, lineWidth } : a)));
     }
   };
+
+  const handleZoomIn = useCallback(() => zoomBy(1.15), [zoomBy]);
+  const handleZoomOut = useCallback(() => zoomBy(1 / 1.15), [zoomBy]);
 
   const handleUndo = () => {
     const lastState = undo();
@@ -101,8 +137,9 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value, className
       const ctx = canvasRef.current?.getContext();
       if (!canvas || !ctx) return;
 
-      const { x, y } = CanvasUtils.getCanvasPoint(e, canvas);
-      const clickedAnnotation = [...annotations].reverse().find((ann) => CanvasUtils.isOnAnnotation(ann, x, y, ctx));
+      const screen = CanvasUtils.getCanvasPoint(e, canvas);
+      const { x, y } = CanvasUtils.screenToWorld(screen, viewport);
+      const clickedAnnotation = [...annotations].reverse().find((ann) => CanvasUtils.isOnAnnotation(ann, x, y, ctx, viewport.scale));
 
       const text = textAreaRef.current?.getText() as TextInputState;
       if (text.visible) {
@@ -113,23 +150,24 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value, className
         }
       } else {
         // 如果没有选中任何标注,则显示文本框
-        !clickedAnnotation && textAreaRef.current?.setText((prev) => ({ ...prev, visible: true, position: { x, y } }));
+        !clickedAnnotation && textAreaRef.current?.setText((prev) => ({ ...prev, visible: true, position: { x: screen.x, y: screen.y } }));
       }
     },
-    [currentTool, annotations]
+    [currentTool, annotations, viewport]
   );
 
   const updateText = () => {
     const text = textAreaRef.current?.getText() as TextInputState;
     const id = text.id || `${Date.now()}`;
+    const worldPos = CanvasUtils.screenToWorld(text.position, viewport);
     // 更新标注后重绘canvas
     setAnnotations((prev) => [
       ...prev,
       {
         id,
         type: 'text',
-        x: text.position.x,
-        y: text.position.y + 16,
+        x: worldPos.x,
+        y: worldPos.y + 16,
         text: text.value,
         color: strokeColor,
       },
@@ -176,6 +214,35 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value, className
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [deleteSelected, handleUndo, handleRedo, currentTool]);
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsSpacePanning(true);
+      }
+      if (e.ctrlKey && (e.key === '+' || e.key === '=')) {
+        e.preventDefault();
+        handleZoomIn();
+      } else if (e.ctrlKey && e.key === '-') {
+        e.preventDefault();
+        handleZoomOut();
+      } else if (e.ctrlKey && e.key === '0') {
+        e.preventDefault();
+        setViewport({ scale: 1, translateX: 0, translateY: 0 });
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsSpacePanning(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, [handleZoomIn, handleZoomOut]);
+
   return (
     <div className={`image-annotation ${className}`}>
       <ToolBar
@@ -190,6 +257,9 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value, className
         lineWidth={lineWidth}
         onColorChange={onColorChanged}
         onLineWidthChange={onLineWidthChanged}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        zoomRatio={viewport.scale * 100}
       />
       <div className="image-container">
         <AnnotationCanvas
@@ -200,6 +270,7 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value, className
           currentTool={currentTool}
           strokeColor={strokeColor}
           lineWidth={lineWidth}
+          viewport={viewport}
           onMouseDown={(e) => {
             mouseEvents.handleMouseDown(e);
             if (currentTool === 'text') {

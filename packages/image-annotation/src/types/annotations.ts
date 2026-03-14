@@ -15,6 +15,8 @@ export interface RectangleAnnotation extends BaseAnnotation {
   y: number;
   width: number;
   height: number;
+  /** 旋转角度（弧度），绕矩形中心，默认 0 */
+  rotation?: number;
 }
 
 export interface CircleAnnotation extends BaseAnnotation {
@@ -28,8 +30,8 @@ export interface ArrowAnnotation extends BaseAnnotation {
   type: 'arrow';
   x: number;
   y: number;
-  width: number;
-  height: number;
+  toX: number;
+  toY: number;
 }
 
 export interface TextAnnotation extends BaseAnnotation {

@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import type { ToolType } from '../types/annotations';
 
+export type EditAction = 'move' | 'resize' | 'rotate' | null;
+
 export interface DrawState {
   isDrawing: boolean;
   isDragging: boolean;
@@ -8,6 +10,10 @@ export interface DrawState {
   currentPos: { x: number; y: number };
   freehandPath: Array<{ x: number; y: number }>;
   selectedId: string | null;
+  /** 编辑模式：move=拖拽移动, resize=缩放, rotate=旋转 */
+  editAction: EditAction;
+  /** 当前操作的 resize 手柄索引：矩形 0-3 四角, 圆 0 右边缘, 箭头 0=起点 1=终点 */
+  resizeHandle: number | null;
 }
 
 const initialState: DrawState = {
@@ -17,6 +23,8 @@ const initialState: DrawState = {
   currentPos: { x: 0, y: 0 },
   freehandPath: [],
   selectedId: null,
+  editAction: null,
+  resizeHandle: null,
 };
 
 export function useDrawState() {
@@ -30,16 +38,21 @@ export function useDrawState() {
     setDrawState((prev) => ({ ...prev, ...updates }));
   }, []);
 
-  const startDrawing = useCallback((x: number, y: number, tool: ToolType, selectedId?: string | null) => {
-    setDrawState({
-      isDrawing: !selectedId,
-      isDragging: !!selectedId,
-      startPos: { x, y },
-      currentPos: { x, y },
-      freehandPath: tool === 'freehand' ? [{ x, y }] : [],
-      selectedId: selectedId || null,
-    });
-  }, []);
+  const startDrawing = useCallback(
+    (x: number, y: number, tool: ToolType, selectedId?: string | null, editAction?: EditAction, resizeHandle?: number | null) => {
+      setDrawState({
+        isDrawing: !selectedId,
+        isDragging: !!selectedId,
+        startPos: { x, y },
+        currentPos: { x, y },
+        freehandPath: tool === 'freehand' ? [{ x, y }] : [],
+        selectedId: selectedId ?? null,
+        editAction: editAction ?? null,
+        resizeHandle: resizeHandle ?? null,
+      });
+    },
+    []
+  );
 
   const updateCurrentPos = useCallback((x: number, y: number, tool: ToolType) => {
     setDrawState((prev) => ({
@@ -57,6 +70,8 @@ export function useDrawState() {
       freehandPath: [],
       startPos: { x: 0, y: 0 },
       currentPos: { x: 0, y: 0 },
+      editAction: null,
+      resizeHandle: null,
     }));
   }, []);
 

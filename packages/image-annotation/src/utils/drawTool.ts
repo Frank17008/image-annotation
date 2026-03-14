@@ -1,4 +1,5 @@
 import type { ArrowDrawingPayload, CircleAnnotation, FreehandAnnotation, RectangleAnnotation, TextAnnotation } from '../types/annotations';
+import { getWorldTextFont, getWorldTextLineHeight } from './canvasUtils';
 
 export const drawArrow = (ctx: CanvasRenderingContext2D, annotation: ArrowDrawingPayload, lineWidth: number): void => {
   const { fromX, fromY, toX, toY, color } = annotation;
@@ -44,17 +45,29 @@ export const drawFreehand = (ctx: CanvasRenderingContext2D, annotation: Freehand
 export const drawRectangle = (ctx: CanvasRenderingContext2D, annotation: RectangleAnnotation, lineWidth: number): void => {
   ctx.strokeStyle = annotation.color;
   ctx.lineWidth = lineWidth;
-  ctx.strokeRect(annotation.x, annotation.y, annotation.width, annotation.height);
+  const rot = annotation.rotation ?? 0;
+  if (Math.abs(rot) < 1e-6) {
+    ctx.strokeRect(annotation.x, annotation.y, annotation.width, annotation.height);
+    return;
+  }
+  const cx = annotation.x + annotation.width / 2;
+  const cy = annotation.y + annotation.height / 2;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rot);
+  ctx.translate(-annotation.width / 2, -annotation.height / 2);
+  ctx.strokeRect(0, 0, annotation.width, annotation.height);
+  ctx.restore();
 };
 
-export const drawText = (ctx: CanvasRenderingContext2D, annotation: TextAnnotation): void => {
+export const drawText = (ctx: CanvasRenderingContext2D, annotation: TextAnnotation, viewportScale: number = 1): void => {
   ctx.fillStyle = annotation.color;
-  ctx.font = '16px Arial';
+  ctx.font = viewportScale === 1 ? '16px Arial' : getWorldTextFont(viewportScale);
   const lines = annotation.text.split('\n');
   let yPos = annotation.y;
   for (let i = 0; i < lines.length; i++) {
     ctx.fillText(lines[i], annotation.x, yPos);
-    yPos += 20;
+    yPos += viewportScale === 1 ? 20 : getWorldTextLineHeight(viewportScale);
   }
 };
 
