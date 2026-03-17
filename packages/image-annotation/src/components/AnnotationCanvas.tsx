@@ -16,6 +16,7 @@ interface AnnotationCanvasProps {
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onContextMenu: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseUp: () => void;
+  onWheel?: (e: React.WheelEvent<HTMLCanvasElement>) => void;
 }
 
 export interface AnnotationCanvasHandle {
@@ -25,7 +26,7 @@ export interface AnnotationCanvasHandle {
 }
 
 const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCanvasProps>(
-  ({ src, annotations, drawState, currentTool, strokeColor, lineWidth, viewport, onMouseDown, onMouseMove, onMouseUp, onContextMenu }, ref) => {
+  ({ src, annotations, drawState, currentTool, strokeColor, lineWidth, viewport, onMouseDown, onMouseMove, onMouseUp, onContextMenu, onWheel }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const imageRef = useRef<HTMLImageElement | null>(null);
     const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -260,7 +261,7 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCanvasProp
       drawCanvas();
     }, [annotations, drawState, currentTool, strokeColor, lineWidth, viewport]);
 
-    return <canvas ref={canvasRef} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onContextMenu={onContextMenu} />;
+    return <canvas ref={canvasRef} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onContextMenu={onContextMenu} onWheel={onWheel} />;
   }
 );
 

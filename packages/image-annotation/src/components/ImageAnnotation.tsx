@@ -12,9 +12,10 @@ interface ImageAnnotationProps {
   className?: string;
   onChange?: (d: Annotation[]) => void;
   value?: Annotation[];
+  onUpload?: () => void;
 }
 
-const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value, className = '', onChange }) => {
+const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value, className = '', onChange, onUpload }) => {
   const [annotations, setAnnotations] = useState<Annotation[]>(value || []);
   const [currentTool, setCurrentTool] = useState<ToolType>(null);
   const [strokeColor, setStrokeColor] = useState<string>('#FF0000');
@@ -96,6 +97,27 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value, className
 
   const handleZoomIn = useCallback(() => zoomBy(1.15), [zoomBy]);
   const handleZoomOut = useCallback(() => zoomBy(1 / 1.15), [zoomBy]);
+
+  // 鼠标滚轮缩放
+  const handleWheel = useCallback(
+    (e: React.WheelEvent<HTMLCanvasElement>) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      const nextScale = viewport.scale * delta;
+      const scale = CanvasUtils.clampNumber(nextScale, 0.25, 4);
+      const rect = (e.target as HTMLCanvasElement).getBoundingClientRect();
+      const screenX = e.clientX - rect.left;
+      const screenY = e.clientY - rect.top;
+      const worldX = (screenX - viewport.translateX) / viewport.scale;
+      const worldY = (screenY - viewport.translateY) / viewport.scale;
+      setViewport({
+        scale,
+        translateX: screenX - worldX * scale,
+        translateY: screenY - worldY * scale,
+      });
+    },
+    [viewport]
+  );
 
   const handleUndo = () => {
     const lastState = undo();
@@ -252,6 +274,7 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value, className
         onUndo={handleUndo}
         onRedo={handleRedo}
         onExport={onExport}
+        onUpload={onUpload}
         history={{ canRedo, canUndo }}
         strokeColor={strokeColor}
         lineWidth={lineWidth}
@@ -271,6 +294,7 @@ const ImageAnnotation: React.FC<ImageAnnotationProps> = ({ src, value, className
           strokeColor={strokeColor}
           lineWidth={lineWidth}
           viewport={viewport}
+          onWheel={handleWheel}
           onMouseDown={(e) => {
             mouseEvents.handleMouseDown(e);
             if (currentTool === 'text') {

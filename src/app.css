@@ -58,6 +58,27 @@ code {
   gap: 10px;
 }
 
+.github-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  color: #374151;
+  transition: all 0.2s ease;
+}
+
+.github-link:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #111827;
+}
+
+.github-link svg {
+  width: 24px;
+  height: 24px;
+}
+
 .app-badge {
   display: inline-flex;
   align-items: center;
@@ -123,6 +144,43 @@ code {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.panel-meta {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  gap: 2px;
+}
+
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  color: #0369a1;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upload-btn:hover {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
 }
 
 .panel-title {

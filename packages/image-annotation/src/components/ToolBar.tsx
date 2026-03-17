@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import './ToolBar.css';
 import { ToolType } from '../types/annotations';
-import { RectangleIcon, CircleIcon, ArrowIcon, TextIcon, BrushIcon, ClearIcon, UndoIcon, RedoIcon, ExportIcon, ColorIcon, WidthIcon, ZoomInIcon, ZoomOutIcon } from './Icons';
+import { RectangleIcon, CircleIcon, ArrowIcon, TextIcon, BrushIcon, ClearIcon, UndoIcon, RedoIcon, ExportIcon, ColorIcon, WidthIcon, ZoomInIcon, ZoomOutIcon, UploadIcon } from './Icons';
 
 interface ToolBarProps {
   currentTool: string | null;
@@ -10,6 +10,7 @@ interface ToolBarProps {
   onUndo: () => void;
   onRedo: () => void;
   onExport: () => void;
+  onUpload?: () => void;
   history: { canUndo: boolean; canRedo: boolean };
   strokeColor: string;
   lineWidth: number;
@@ -21,7 +22,7 @@ interface ToolBarProps {
 }
 
 const ToolBar = (props: ToolBarProps) => {
-  const { currentTool, onSelectTool, onClear, onUndo, onRedo, onExport, history, strokeColor, lineWidth, onColorChange, onLineWidthChange, onZoomIn, onZoomOut, zoomRatio = 100 } = props;
+  const { currentTool, onSelectTool, onClear, onUndo, onRedo, onExport, onUpload, history, strokeColor, lineWidth, onColorChange, onLineWidthChange, onZoomIn, onZoomOut, zoomRatio = 100 } = props;
 
   return (
     <div className="toolbar">
@@ -111,6 +112,13 @@ const ToolBar = (props: ToolBarProps) => {
               <ClearIcon size={16} />
             </span>
           </button>
+          {onUpload && (
+            <button className="action-button upload-button" onClick={onUpload} title="上传图片" aria-label="上传图片">
+              <span aria-hidden="true">
+                <UploadIcon size={16} />
+              </span>
+            </button>
+          )}
           <button className="action-button export-button" onClick={onExport} title="导出" aria-label="导出图片">
             <span aria-hidden="true">
               <ExportIcon size={16} />
