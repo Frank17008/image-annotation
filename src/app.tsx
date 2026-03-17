@@ -101,11 +101,21 @@ export default function App() {
             </div>
 
             <div className="info-section info-section-secondary">
+              <h3 className="info-section-title">新功能体验</h3>
+              <ul className="tips-list">
+                <li>🖱️ <strong>滚轮缩放</strong>：直接滚动鼠标滚轮即可缩放画布</li>
+                <li>✋ <strong>拖拽平移</strong>：按住空格键并拖拽鼠标可平移画布</li>
+                <li>📤 <strong>图片上传</strong>：点击工具栏上传按钮可选择本地图片</li>
+              </ul>
+            </div>
+
+            <div className="info-section info-section-secondary">
               <h3 className="info-section-title">集成方式小贴士</h3>
               <ul className="tips-list">
                 <li>为外层容器设置明确高度，例如 <code>height: 600px</code>，组件会自动让 canvas 填满容器。</li>
                 <li>通过 <code>value</code> 受控回显已有标注，适合编辑已有图片标注场景。</li>
                 <li>监听 <code>onChange</code> 把标注同步到状态管理或发送到后端接口。</li>
+                <li>使用 <code>onUpload</code> 回调实现自定义图片上传功能。</li>
               </ul>
             </div>
           </div>
